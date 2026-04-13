@@ -1022,6 +1022,15 @@
         notificationStreamState.source = null;
       }
 
+      function stopNotificationRealtime() {
+        closeSSEConnection();
+        stopFallbackPolling();
+        if (refreshViewTimer) {
+          clearTimeout(refreshViewTimer);
+          refreshViewTimer = null;
+        }
+      }
+
       function connectSSE() {
         if (document.hidden) return;
         if (notificationStreamState.connecting || notificationStreamState.source) return;
@@ -1158,6 +1167,17 @@
       document.addEventListener("click", (evt) => {
         if (!evt.target.closest(".brand")) center.classList.remove("is-open");
       });
+      document.addEventListener("click", (evt) => {
+        const link = evt.target.closest("a[href]");
+        if (!link) return;
+        if (link.target && link.target !== "_self") return;
+        const href = link.getAttribute("href") || "";
+        if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+        stopNotificationRealtime();
+      }, true);
+      document.addEventListener("submit", () => {
+        stopNotificationRealtime();
+      }, true);
 
       loadInitialFeed();
       if (pushEnableButtons.length) {
@@ -1173,12 +1193,11 @@
           });
         }
       }
-      window.addEventListener("beforeunload", closeSSEConnection);
-      window.addEventListener("pagehide", closeSSEConnection);
+      window.addEventListener("beforeunload", stopNotificationRealtime);
+      window.addEventListener("pagehide", stopNotificationRealtime);
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
-          closeSSEConnection();
-          stopFallbackPolling();
+          stopNotificationRealtime();
           return;
         }
         connectSSE();
