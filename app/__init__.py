@@ -1,6 +1,8 @@
 # app/__init__.py
 import os
 import secrets
+import threading
+import time
 from pathlib import Path, PurePosixPath
 
 from flask import (
@@ -29,6 +31,10 @@ from app.utils.roles import (
     is_staff_role,
     normalize_role,
 )
+
+HEADER_NOTIFICATIONS_CACHE_TTL_SECONDS = 5
+_header_notifications_cache_lock = threading.Lock()
+_header_notifications_cache: dict[int, dict] = {}
 
 
 def create_app():
@@ -162,6 +168,13 @@ def create_app():
         if cached_payload is not None:
             return cached_payload
 
+        now = time.monotonic()
+        with _header_notifications_cache_lock:
+            user_cached_payload = _header_notifications_cache.get(current_user.id)
+            if user_cached_payload and now - user_cached_payload["ts"] < HEADER_NOTIFICATIONS_CACHE_TTL_SECONDS:
+                g._header_notifications_payload = user_cached_payload["payload"]
+                return user_cached_payload["payload"]
+
         notifications = (
             Notification.query
             .filter(Notification.user_id == current_user.id)
@@ -184,6 +197,8 @@ def create_app():
             "header_notifications": notifications,
             "header_unread_notifications": int(unread_count),
         }
+        with _header_notifications_cache_lock:
+            _header_notifications_cache[current_user.id] = {"ts": now, "payload": payload}
         g._header_notifications_payload = payload
         return payload
 
