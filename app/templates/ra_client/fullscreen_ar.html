@@ -832,6 +832,7 @@
   let html5Qr = null;
   let lastMaterialId = "";
   let lastFetchAt = 0;
+  let isProcessingQr = false;
   let helperIndex = 0;
   let helperInterval = null;
 
@@ -1076,28 +1077,34 @@
   }
 
   async function handleQr(decodedText) {
-    log("QR LEÍDO", decodedText);
-    lastQrText.textContent = decodedText || "Leído";
-    markScanTime();
-    setStatus("QR detectado correctamente.", "green");
-    setCardMessage(`QR leído: ${decodedText}`, "ok");
-    scanHelper.textContent = "Lectura detectada · procesando material";
+    if (isProcessingQr) return;
+    isProcessingQr = true;
+    try {
+      log("QR LEÍDO", decodedText);
+      lastQrText.textContent = decodedText || "Leído";
+      markScanTime();
+      setStatus("QR detectado correctamente.", "green");
+      setCardMessage(`QR leído: ${decodedText}`, "ok");
+      scanHelper.textContent = "Lectura detectada · procesando material";
 
-    const materialId = extractMaterialId(decodedText);
+      const materialId = extractMaterialId(decodedText);
 
-    if (!materialId || Number.isNaN(materialId)) {
-      setStatus("QR leído, pero no contiene material_id usable.", "red");
-      setCardMessage("QR no válido para material.", "bad");
-      return;
-    }
+      if (!materialId || Number.isNaN(materialId)) {
+        setStatus("QR leído, pero no contiene material_id usable.", "red");
+        setCardMessage("QR no válido para material.", "bad");
+        return;
+      }
 
-    const now = Date.now();
-    const shouldFetch = materialId !== lastMaterialId || now - lastFetchAt > 2500;
+      const now = Date.now();
+      const shouldFetch = materialId !== lastMaterialId || now - lastFetchAt > 2500;
 
-    if (shouldFetch) {
-      lastMaterialId = materialId;
-      lastFetchAt = now;
-      await fetchMaterial(materialId, decodedText);
+      if (shouldFetch) {
+        lastMaterialId = materialId;
+        lastFetchAt = now;
+        await fetchMaterial(materialId, decodedText);
+      }
+    } finally {
+      isProcessingQr = false;
     }
   }
 

@@ -411,12 +411,36 @@ def dashboard_home():
         .all()
     )
 
-    ops_snapshot = _build_operational_snapshot(
-        today=today,
-        week_start=week_start,
-        week_end=week_end,
-        summary_counts=summary_counts,
-    )
+    # Evita recalcular bloques operativos pesados durante el render inicial.
+    # El frontend hidrata estas listas vía /dashboard/ops-feed tras pintar la vista.
+    ops_snapshot = {
+        "counts": {
+            "pending_reservations": summary_counts["pending_reservations"],
+            "active_material_requests": summary_counts["active_material_requests"],
+            "ready_material_requests": summary_counts["ready_material_requests"],
+            "open_debts": summary_counts["open_debts"],
+            "pending_print3d_jobs": summary_counts["pending_print3d_jobs"],
+        },
+        "pending_reservations": [],
+        "active_material_requests": [],
+        "ready_material_requests": [],
+        "open_debts_recent": [],
+        "pending_print3d_recent": [],
+        "recent_activity": [],
+        "summary": {
+            "total_inventory": summary_counts["total_inventory"],
+            "reservations_today": summary_counts["reservations_today"],
+            "approved_today": summary_counts["approved_today"],
+            "pending_today": summary_counts["pending_today"],
+            "open_material_requests": summary_counts["open_material_requests"],
+            "ready_material_requests": summary_counts["ready_material_requests"],
+            "open_debts": summary_counts["open_debts"],
+            "low_stock_count": summary_counts["low_stock_count"],
+            "pending_users_count": summary_counts["pending_users_count"],
+            "weekly_reservations": summary_counts["weekly_reservations"],
+            "pending_print3d_jobs": summary_counts["pending_print3d_jobs"],
+        },
+    }
 
     return render_template(
         "dashboard/home.html",

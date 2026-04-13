@@ -910,6 +910,20 @@ let lastScanTime = 0;
 let isProcessingScan = false;
 const scanCooldownMs = 8000;
 
+function pauseScannerProcessing() {
+  if (!scanner || typeof scanner.pause !== 'function') return;
+  try {
+    scanner.pause(true);
+  } catch (_) {}
+}
+
+function resumeScannerProcessing() {
+  if (!scanner || typeof scanner.resume !== 'function') return;
+  try {
+    scanner.resume();
+  } catch (_) {}
+}
+
 /* ============================================================
    CONSOLA
    ============================================================ */
@@ -1141,11 +1155,13 @@ function onScanSuccess(decodedText) {
   lastScannedId = materialId;
   lastScanTime = now;
   isProcessingScan = true;
+  pauseScannerProcessing();
 
   logConsole('INFO', `QR detectado -> material_id: ${materialId}`);
   // evita requests duplicados mientras se procesa un escaneo válido
   getMaterial(materialId).finally(() => {
     isProcessingScan = false;
+    resumeScannerProcessing();
   });
 }
 
