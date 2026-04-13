@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Portal institucional{% endblock %}</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <style>
+    .brand-logo-shell--button {
+      position: relative;
+      border: none;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease;
+      isolation: isolate;
+      overflow: visible !important;
+    }
+    .brand-logo-shell--button:hover { transform: translateY(-1px); }
+    .brand-logo-shell--button:focus-visible {
+      outline: 2px solid rgba(224,177,44,.75);
+      outline-offset: 2px;
+    }
+    .notification-badge.is-hidden { display: none; }
+    #logoNotificationToggle .notification-badge{
+      top: 2px;
+      right: 2px;
+      transform: translate(30%, -30%);
+      z-index: 35;
+    }
+    .sidebar-nav .nav-item.active{
+      position: relative;
+      overflow: visible;
+    }
+    .sidebar-nav .nav-item.active::before{
+      content: "";
+      position: absolute;
+      left: -12px;
+      top: 10px;
+      bottom: 10px;
+      width: 4px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(199,159,51,.95), rgba(226,193,90,.95));
+      box-shadow: 0 0 0 1px rgba(140,106,20,.12);
+    }
+    .sidebar-nav .nav-section-title + .nav-item{
+      margin-top: 6px;
+    }
+    .sidebar-nav .nav-section-title:not(:first-of-type){
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(102,81,45,.14);
+    }
+    .sidebar-logout{
+      background: rgba(255,255,255,.35) !important;
+      border-color: rgba(102,81,45,.12) !important;
+      color: var(--text-soft) !important;
+    }
+    .sidebar-logout:hover{
+      background: rgba(255,255,255,.55) !important;
+      color: var(--text) !important;
+      border-color: rgba(102,81,45,.18) !important;
+    }
+    .notification-center {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 74px;
+      z-index: 95;
+      display: none;
+      perspective: 800px;
+    }
+    .notification-center.is-open { display: block; }
+    .notification-center__panel {
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255,255,255,.72), rgba(255,255,255,.48));
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      box-shadow: 0 20px 42px rgba(4,8,18,.26), inset 0 1px 0 rgba(255,255,255,.55);
+      overflow: hidden;
+      transform: translateY(0) rotateX(0deg);
+      transform-origin: top center;
+      animation: panel-in .24s ease both;
+    }
+    .notification-center__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.34);
+      background: rgba(255,255,255,.2);
+    }
+    .notification-center__header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .notification-center__action-btn {
+      border: 1px solid rgba(255,255,255,.42);
+      background: rgba(255,255,255,.34);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: .72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .14s ease, background .14s ease, box-shadow .14s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,.08);
+    }
+    .notification-center__action-btn:hover {
+      background: rgba(255,255,255,.56);
+      transform: translateY(-1px);
+    }
+    .notification-center__action-btn:active { transform: translateY(0); }
+    .notification-center__list {
+      max-height: 360px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+    }
+    .notification-center__list::-webkit-scrollbar { width: 10px; }
+    .notification-center__list::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,.18);
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background-clip: padding-box;
+    }
+    .notification-center__empty {
+      padding: 16px 10px;
+      text-align: center;
+      color: var(--text-dim);
+    }
+    .notification-center-item {
+      border: 1px solid rgba(255,255,255,.45);
+      border-radius: 14px;
+      background: rgba(255,255,255,.58);
+      box-shadow: 0 6px 18px rgba(0,0,0,.08);
+      padding: 12px;
+    }
+    .notification-center-item--unread {
+      border-color: rgba(255,179,40,.85);
+      background: linear-gradient(145deg, rgba(255,245,214,.72), rgba(255,255,255,.62));
+    }
+    .notification-center-item__title { font-weight: 700; margin-bottom: 4px; }
+    .notification-center-item__message { font-size: .9rem; margin-bottom: 8px; }
+    .notification-center-item__meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: .78rem;
+      color: var(--text-dim);
+    }
+    @keyframes badge-pop {
+      0% { transform: scale(.42); opacity: .45; }
+      60% { transform: scale(1.14); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateY(-8px) rotateX(-6deg); }
+      to { opacity: 1; transform: translateY(0) rotateX(0deg); }
+    }
+    #notification-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: min(390px, calc(100vw - 22px));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 130;
+      pointer-events: none;
+    }
+    .notification {
+      pointer-events: auto;
+      position: relative;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: var(--panel);
+      box-shadow: 0 14px 30px rgba(0,0,0,.16);
+      overflow: hidden;
+      transform: translateX(120%);
+      opacity: 0;
+      animation: toast-slide-in .24s ease forwards;
+    }
+    .notification.is-closing { animation: toast-slide-out .22s ease forwards; }
+    .notification__progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 3px;
+      width: 100%;
+      transform-origin: left center;
+      animation: toast-progress linear forwards;
+    }
+    .notification:hover .notification__progress { animation-play-state: paused; }
+    .notification__body {
+      display: grid;
+      grid-template-columns: 34px 1fr 22px;
+      gap: 10px;
+      align-items: start;
+      padding: 12px 12px 11px;
+    }
+    .notification__icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 15px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+    }
+    .notification__header {
+      font-size: .92rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .notification__text {
+      margin: 0;
+      font-size: .86rem;
+      line-height: 1.3;
+      color: var(--text-dim);
+    }
+    .notification__close {
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 14px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+    }
+    .notification__close:hover { background: rgba(0,0,0,.06); color: var(--text); }
+    .notification--success .notification__icon,
+    .notification--success .notification__progress { background: #1f9d62; }
+    .notification--error .notification__icon,
+    .notification--error .notification__progress { background: #cf4d4d; }
+    .notification--warning .notification__icon,
+    .notification--warning .notification__progress { background: #d09a19; }
+    .notification--info .notification__icon,
+    .notification--info .notification__progress { background: #3e7edc; }
+    @keyframes toast-slide-in {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes toast-slide-out {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(115%); opacity: 0; }
+    }
+    @keyframes toast-progress {
+      from { transform: scaleX(1); }
+      to { transform: scaleX(0); }
+    }
+
+    form[data-form-mode="create"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    form[data-form-mode="create"] select,
+    form[data-form-mode="create"] textarea {
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.84);
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    form[data-form-mode="create"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus,
+    form[data-form-mode="create"] select:focus,
+    form[data-form-mode="create"] textarea:focus {
+      border-color: color-mix(in srgb, var(--brand, #b8872f) 48%, #ffffff);
+      box-shadow: 0 0 0 3px rgba(184, 135, 47, 0.14);
+      outline: none;
+    }
+    form[data-form-mode="create"] input:disabled,
+    form[data-form-mode="create"] select:disabled,
+    form[data-form-mode="create"] textarea:disabled {
+      opacity: .72;
+      cursor: not-allowed;
+      background: rgba(245,245,245,.9);
+    }
+    form[data-form-mode="create"] .search-box input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    form[data-form-mode="create"] .search-box input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus {
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+    }
+    .form-readonly-visual {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.72);
+      color: var(--text-soft);
+      font-weight: 600;
+    }
+    @media (max-width: 768px){
+      #logoNotificationToggle .notification-badge{
+        top: -2px;
+        right: -2px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        font-size: 11px;
+        border-width: 2px;
+        z-index: 45;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="{{ url_for('static', filename='js/ui-animations.js') }}"></script>
+  <div class="app-layout">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">
+          <button id="btnCollapse" class="sidebar-collapse-btn" type="button" aria-label="Colapsar menú">
+            <i class="ph ph-caret-left"></i>
+          </button>
+
+          <button id="logoNotificationToggle" class="brand-logo-shell brand-logo-shell--button" type="button" aria-label="Centro de notificaciones">
+              <img src="{{ url_for('static', filename='img/coyolabs.png') }}" alt="CoyoLabs Logo" class="brand-logo">
+              <span id="notificationBadge" class="notification-badge is-hidden">0</span>
+          </button>
+
+          <a href="{{ url_for('root_home') }}" class="brand-link">
+            <div class="brand-text">
+              <h2>CoyoLabs</h2>
+              <p>Sistema institucional</p>
+            </div>
+          </a>
+        </div>
+        {% if current_user.is_authenticated %}
+        <div id="notificationCenter" class="notification-center">
+          <section class="notification-center__panel">
+            <header class="notification-center__header">
+              <strong>Notificaciones</strong>
+              <div class="notification-center__header-actions">
+                <button id="pushEnableBtn" data-push-enable-btn type="button" class="notification-center__action-btn">Activar notificaciones</button>
+                <button id="notifMarkAllBtn" type="button" class="notification-center__action-btn">Marcar todo leído</button>
+                <button id="notifClearReadBtn" type="button" class="notification-center__action-btn">Limpiar leídas</button>
+                <a href="{{ url_for('notifications.list_notifications') }}" class="btn btn-ghost">Ver todo</a>
+              </div>
+            </header>
+            <div id="notificationPanelList" class="notification-center__list"></div>
+          </section>
+        </div>
+        {% endif %}
+      </div>
+      <div class="sidebar-scroll">
+        <nav class="sidebar-nav">
+          <p class="nav-section-title">Principal</p>
+
+          {% set is_admin_nav = current_user.is_authenticated and is_admin_role(current_user.role) %}
+          {% set is_staff_only_nav = current_user.is_authenticated and (current_user.role or '')|upper == 'STAFF' %}
+          {% set current_role = (current_user.role or '')|upper %}
+          {% set can_view_inventory_nav = current_role in ['TEACHER', 'STAFF', 'ADMIN', 'SUPERADMIN'] %}
+          {% set can_view_reports_nav = current_role in ['STAFF', 'ADMIN', 'SUPERADMIN'] %}
+          {% set can_view_users_nav = current_role in ['ADMIN', 'SUPERADMIN'] %}
+          {% if is_admin_nav %}
+          <a href="{{ url_for('dashboard.dashboard_home') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+            <i class="ph ph-gauge nav-icon"></i>
+            <span class="nav-label">Panel</span>
+          </a>
+          {% elif is_staff_only_nav %}
+          <a href="{{ url_for('home.staff_dashboard') }}"
+            class="nav-item {% if active_page == 'home' %}active{% endif %}">
+            <i class="ph ph-house nav-icon"></i>
+            <span class="nav-label">Inicio</span>
+          </a>
+          {% else %}
+          <a href="{{ url_for('root_home') }}"
+            class="nav-item {% if active_page == 'home' %}active{% endif %}">
+            <i class="ph ph-house nav-icon"></i>
+            <span class="nav-label">Inicio</span>
+          </a>
+          {% endif %}
+          {% if is_staff_only_nav %}
+          <div class="nav-submenu nav-submenu-static">
+            <a href="{{ url_for('inventory.inventory_list') }}" class="nav-subitem {% if active_page == 'inventory' %}active{% endif %}">
+              <i class="ph ph-package nav-subicon"></i>
+              <span>Inventario</span>
+            </a>
+            <a href="{{ url_for('reports.reports_home') }}" class="nav-subitem {% if active_page == 'reports' %}active{% endif %}">
+              <i class="ph ph-chart-bar nav-subicon"></i>
+              <span>Reportes</span>
+            </a>
+            <a href="{{ url_for('profile.my_profile') }}" class="nav-subitem {% if active_page == 'profile' %}active{% endif %}">
+              <i class="ph ph-user-circle nav-subicon"></i>
+              <span>Mi perfil</span>
+            </a>
+            <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0;">
+              <button type="submit" class="btn btn-ghost sidebar-logout">
+                <i class="ph ph-sign-out"></i>
+                <span>Cerrar sesión</span>
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <div class="nav-submenu nav-submenu-static">
+            <a href="{{ url_for('reservations.reservations_home') }}" class="nav-subitem {% if active_page == 'reservations' %}active{% endif %}">
+              <i class="ph ph-calendar-check nav-subicon"></i>
+              <span>Reservaciones</span>
+            </a>
+            <a href="{{ url_for('inventory_requests.my_daily_request') }}" class="nav-subitem {% if active_page == 'inventory_requests' %}active{% endif %}">
+              <i class="ph ph-clipboard-text nav-subicon"></i>
+              <span>Solicitud de material</span>
+            </a>
+            {% if current_user.is_authenticated and can_view_inventory_nav %}
+            <a href="{{ url_for('inventory.inventory_list') }}" class="nav-subitem {% if active_page == 'inventory' %}active{% endif %}">
+              <i class="ph ph-package nav-subicon"></i>
+              <span>Inventario</span>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('debts.debts_home') }}" class="nav-subitem {% if active_page == 'debts' %}active{% endif %}">
+              <i class="ph ph-warning-circle nav-subicon"></i>
+              <span>Adeudos</span>
+            </a>
+          </div>
+
+          <p class="nav-section-title">Servicios</p>
+          <div class="nav-submenu nav-submenu-static">
+            <a href="{% if current_user.is_authenticated and is_admin_role(current_user.role) %}{{ url_for('print3d.admin_list') }}{% else %}{{ url_for('print3d.my_jobs') }}{% endif %}" class="nav-subitem {% if active_page == 'prints3d' %}active{% endif %}">
+              <i class="ph ph-cube nav-subicon"></i>
+              <span>Impresiones 3D</span>
+            </a>
+            <a href="{{ url_for('lostfound.lostfound_home') }}" class="nav-subitem {% if active_page == 'lostfound' %}active{% endif %}">
+              <i class="ph ph-suitcase nav-subicon"></i>
+              <span>Objetos perdidos</span>
+            </a>
+            <a href="{{ url_for('forum.forum_home') }}" class="nav-subitem {% if active_page == 'forum' %}active{% endif %}">
+              <i class="ph ph-chats-circle nav-subicon"></i>
+              <span>Foro</span>
+            </a>
+            <a href="{{ url_for('software.software_home') }}" class="nav-subitem {% if active_page == 'software' %}active{% endif %}">
+              <i class="ph ph-app-window nav-subicon"></i>
+              <span>Software</span>
+            </a>
+            {% if current_user.is_authenticated and current_user.role in ["STUDENT", "TEACHER", "ADMIN", "SUPERADMIN"] %}
+            <a href="{{ url_for('ra_client.ra_client_home') }}" class="nav-subitem {% if active_page == 'ra_client' %}active{% endif %}">
+              <i class="ph ph-qr-code nav-subicon"></i>
+              <span>RA Cliente</span>
+            </a>
+            {% endif %}
+          </div>
+
+          <p class="nav-section-title">Gestión</p>
+          <div class="nav-submenu nav-submenu-static">
+            {% if current_user.is_authenticated and can_view_reports_nav %}
+            <a href="{{ url_for('reports.reports_home') }}" class="nav-subitem {% if active_page == 'reports' %}active{% endif %}">
+              <i class="ph ph-chart-bar nav-subicon"></i>
+              <span>Reportes</span>
+            </a>
+            {% endif %}
+            {% if current_user.is_authenticated and can_view_users_nav %}
+            <a href="{{ url_for('users.admin_panel') }}" class="nav-subitem {% if active_page == 'users' %}active{% endif %}">
+              <i class="ph ph-users-three nav-subicon"></i>
+              <span>Usuarios</span>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('profile.my_profile') }}" class="nav-subitem {% if active_page == 'profile' %}active{% endif %}">
+              <i class="ph ph-user-circle nav-subicon"></i>
+              <span>Mi perfil</span>
+            </a>
+
+            <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0;">
+              <button type="submit" class="btn btn-ghost sidebar-logout">
+                <i class="ph ph-sign-out"></i>
+                <span>Cerrar sesión</span>
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-card">
+          <span class="footer-label">{{ current_user.email if current_user.is_authenticated else 'Usuario' }}</span>
+          <strong>{{ (current_user.role|role_label) if current_user.is_authenticated else 'Sin sesión' }}</strong>
+        </div>
+        <div style="margin-top:8px; font-size:.78rem; color:var(--text-dim); display:flex; gap:6px; flex-wrap:wrap;">
+          <a href="{{ url_for('legal.privacy_notice') }}" style="color:inherit; text-decoration:none;">Privacidad</a>
+          <span>•</span>
+          <a href="{{ url_for('legal.terms_and_conditions') }}" style="color:inherit; text-decoration:none;">Términos</a>
+        </div>
+      </div>
+    </aside>
+
+
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <main class="main-content">
+      <div class="mobile-topbar">
+        <button id="btnToggleSidebar" class="mobile-menu-btn" type="button" aria-label="Abrir menú">
+          <i class="ph ph-list"></i>
+        </button>
+      </div>
+
+      <section class="page-shell">
+        {% if crumbs %}
+          <section class="toolbar-card toolbar-card--compact">
+            <div class="crumbs">
+              {% for label, href in crumbs %}
+                <a href="{{ href }}" class="item-link" {% if loop.last %}aria-current="page"{% endif %}>{{ label }}</a>
+                {% if not loop.last %}
+                  <span class="crumb-separator">•</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+
+        {% set flash_messages = get_flashed_messages(with_categories=true) %}
+        <script id="flashMessagesData" type="application/json">{{ flash_messages|tojson }}</script>
+
+        {% if current_user.is_authenticated and active_page not in ['home', 'dashboard'] %}
+          {% include "components/back_button.html" %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+  <div id="notification-container"></div>
+
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script>
+    (function () {
+      const token = "{{ csrf_token }}";
+      if (!token) return;
+
+      const forms = document.querySelectorAll('form[method="post"], form[method="POST"]');
+      forms.forEach((form) => {
+        const action = form.getAttribute('action') || '';
+        if (action.startsWith('/api/')) return;
+        if (form.querySelector('input[name="csrf_token"]')) return;
+
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'csrf_token';
+        hidden.value = token;
+        form.appendChild(hidden);
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const createForms = document.querySelectorAll('form[data-form-mode="create"]');
+      if (!createForms.length) return;
+
+      createForms.forEach((form) => {
+        form.reset();
+        form.querySelectorAll('input[type="file"]').forEach((fileInput) => {
+          fileInput.value = "";
+        });
+        form.querySelectorAll("select, input, textarea").forEach((field) => {
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+      });
+    })();
+  </script>
+  {% if current_user.is_authenticated %}
+  <script>
+    (function () {
+      const notificationContainer = document.getElementById("notification-container");
+      const badge = document.getElementById("notificationBadge");
+      const panelList = document.getElementById("notificationPanelList");
+      const center = document.getElementById("notificationCenter");
+      const logoToggle = document.getElementById("logoNotificationToggle");
+      const pushEnableButtons = Array.from(document.querySelectorAll("[data-push-enable-btn]"));
+      const markAllBtn = document.getElementById("notifMarkAllBtn");
+      const clearReadBtn = document.getElementById("notifClearReadBtn");
+      const csrfToken = "{{ csrf_token }}";
+      if (!badge || !panelList || !center || !logoToggle || !notificationContainer || !markAllBtn || !clearReadBtn) return;
+
+      const state = { items: [], unreadCount: 0 };
+
+      function normalizeToastType(type) {
+        const value = String(type || "").toLowerCase();
+        if (value === "success") return "success";
+        if (value === "error" || value === "danger") return "error";
+        if (value === "warning" || value === "warn") return "warning";
+        return "info";
+      }
+
+      function updateBadge(value) {
+        const normalized = Number.isFinite(value) ? value : 0;
+        state.unreadCount = normalized;
+        if (normalized <= 0) {
+          badge.textContent = "0";
+          badge.classList.add("is-hidden");
+          return;
+        }
+        badge.textContent = normalized > 99 ? "99+" : String(normalized);
+        badge.classList.remove("is-hidden");
+      }
+
+      function createNotification({ title, message, type = "info", duration = 4000 }) {
+        const toastType = normalizeToastType(type);
+        const iconByType = {
+          success: "ph-check-circle",
+          error: "ph-x-circle",
+          warning: "ph-warning-circle",
+          info: "ph-info",
+        };
+        const toast = document.createElement("article");
+        toast.className = `notification notification--${toastType}`;
+        const progress = document.createElement("div");
+        progress.className = "notification__progress";
+        progress.style.animationDuration = `${duration}ms`;
+
+        const body = document.createElement("div");
+        body.className = "notification__body";
+
+        const iconWrap = document.createElement("span");
+        iconWrap.className = "notification__icon";
+        const icon = document.createElement("i");
+        icon.className = `ph ${iconByType[toastType]}`;
+        iconWrap.appendChild(icon);
+
+        const textWrap = document.createElement("div");
+        const header = document.createElement("div");
+        header.className = "notification__header";
+        header.textContent = title || "Notificación";
+        const text = document.createElement("p");
+        text.className = "notification__text";
+        text.textContent = message || "";
+        textWrap.appendChild(header);
+        textWrap.appendChild(text);
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "notification__close";
+        closeBtn.setAttribute("aria-label", "Cerrar");
+        const closeIcon = document.createElement("i");
+        closeIcon.className = "ph ph-x";
+        closeBtn.appendChild(closeIcon);
+
+        body.appendChild(iconWrap);
+        body.appendChild(textWrap);
+        body.appendChild(closeBtn);
+        toast.appendChild(progress);
+        toast.appendChild(body);
+        notificationContainer.appendChild(toast);
+
+        let timer = null;
+        let remaining = duration;
+        let startedAt = Date.now();
+
+        function closeToast() {
+          if (!toast.isConnected) return;
+          toast.classList.add("is-closing");
+          setTimeout(() => toast.remove(), 220);
+        }
+        function startTimer() {
+          startedAt = Date.now();
+          timer = setTimeout(closeToast, remaining);
+        }
+        function pauseTimer() {
+          clearTimeout(timer);
+          remaining -= (Date.now() - startedAt);
+          if (remaining < 120) remaining = 120;
+        }
+
+        startTimer();
+        toast.addEventListener("mouseenter", pauseTimer);
+        toast.addEventListener("mouseleave", startTimer);
+        closeBtn.addEventListener("click", closeToast);
+      }
+
+      function renderNotificationPanel() {
+        panelList.textContent = "";
+        if (!state.items.length) {
+          const empty = document.createElement("div");
+          empty.className = "notification-center__empty";
+          empty.textContent = "Sin notificaciones recientes.";
+          panelList.appendChild(empty);
+          return;
+        }
+
+        state.items.slice(0, 5).forEach((n) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = `notification-center-item ${n.is_read ? "" : "notification-center-item--unread"}`;
+          const titleEl = document.createElement("div");
+          titleEl.className = "notification-center-item__title";
+          titleEl.textContent = n.title || "";
+
+          const messageEl = document.createElement("div");
+          messageEl.className = "notification-center-item__message";
+          messageEl.textContent = n.message || "";
+
+          const meta = document.createElement("div");
+          meta.className = "notification-center-item__meta";
+
+          const createdAt = document.createElement("span");
+          createdAt.textContent = n.created_at_label || "";
+
+          const actions = document.createElement("span");
+          actions.style.display = "flex";
+          actions.style.gap = "6px";
+          if (n.link) {
+            const link = document.createElement("a");
+            link.href = n.link;
+            link.className = "btn btn-ghost";
+            link.textContent = "Abrir";
+            actions.appendChild(link);
+          }
+
+          meta.appendChild(createdAt);
+          meta.appendChild(actions);
+          wrapper.appendChild(titleEl);
+          wrapper.appendChild(messageEl);
+          wrapper.appendChild(meta);
+          panelList.appendChild(wrapper);
+        });
+      }
+
+      function upsertNotification(payload) {
+        const idx = state.items.findIndex((n) => n.id === payload.id);
+        if (idx >= 0) state.items[idx] = payload;
+        else state.items.unshift(payload);
+        state.items = state.items.slice(0, 20);
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+      }
+
+      function setPushButtonState(state) {
+        if (!pushEnableButtons.length) return;
+        const setLabel = (btn, label) => {
+          const textNode = btn.querySelector("span");
+          if (textNode) textNode.textContent = label;
+          else btn.textContent = label;
+        };
+        pushEnableButtons.forEach((btn) => {
+          btn.dataset.state = state;
+        });
+        if (state === "active") {
+          pushEnableButtons.forEach((btn) => {
+            setLabel(btn, "Notificaciones activas");
+            btn.disabled = false;
+          });
+          return;
+        }
+        if (state === "blocked") {
+          pushEnableButtons.forEach((btn) => {
+            setLabel(btn, "Permiso bloqueado");
+            btn.disabled = true;
+          });
+          return;
+        }
+        if (state === "unsupported") {
+          pushEnableButtons.forEach((btn) => {
+            setLabel(btn, "No compatible");
+            btn.disabled = true;
+          });
+          return;
+        }
+        pushEnableButtons.forEach((btn) => {
+          setLabel(btn, "Activar notificaciones");
+          btn.disabled = false;
+        });
+      }
+
+      async function unsubscribeCurrentSubscription() {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+        const registration = await navigator.serviceWorker.getRegistration("{{ url_for('static', filename='sw.js') }}");
+        if (!registration) return;
+        const existingSub = await registration.pushManager.getSubscription();
+        if (!existingSub) return;
+
+        await fetch("{{ url_for('notifications.push_unsubscribe') }}", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
+          },
+          body: JSON.stringify({ endpoint: existingSub.endpoint }),
+        });
+        await existingSub.unsubscribe();
+      }
+
+      async function syncPushButtonState() {
+        if (!pushEnableButtons.length) return;
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+          setPushButtonState("unsupported");
+          return;
+        }
+
+        if (Notification.permission === "denied") {
+          try { await unsubscribeCurrentSubscription(); } catch (_) {}
+          setPushButtonState("blocked");
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.getRegistration("{{ url_for('static', filename='sw.js') }}");
+        const existingSub = registration ? await registration.pushManager.getSubscription() : null;
+        if (existingSub && Notification.permission === "granted") {
+          setPushButtonState("active");
+          return;
+        }
+        setPushButtonState("idle");
+      }
+
+      async function enableWebPush() {
+        if (!pushEnableButtons.length) return;
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+          setPushButtonState("unsupported");
+          createNotification({ title: "Push no disponible", message: "Tu navegador no soporta notificaciones push.", type: "warning" });
+          return;
+        }
+
+        if (pushEnableButtons[0].dataset.state === "active") {
+          try {
+            await unsubscribeCurrentSubscription();
+            createNotification({ title: "Notificaciones desactivadas", message: "La suscripción push fue eliminada.", type: "info" });
+            setPushButtonState("idle");
+          } catch (_) {
+            createNotification({ title: "Error", message: "No se pudo desactivar la suscripción push.", type: "error" });
+          }
+          return;
+        }
+
+        if (Notification.permission === "denied") {
+          setPushButtonState("blocked");
+          createNotification({ title: "Permiso bloqueado", message: "Habilita notificaciones en la configuración del navegador.", type: "warning" });
+          return;
+        }
+
+        pushEnableButtons.forEach((btn) => { btn.disabled = true; });
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") {
+            setPushButtonState(permission === "denied" ? "blocked" : "idle");
+            createNotification({ title: "Permiso denegado", message: "No se activaron notificaciones push.", type: "warning" });
+            return;
+          }
+
+          const keyResp = await fetch("{{ url_for('notifications.push_public_key') }}", { credentials: "same-origin" });
+          const keyData = await keyResp.json();
+          if (!keyResp.ok || !keyData.ok || !keyData.public_key) {
+            createNotification({ title: "Push no configurado", message: "No fue posible activar notificaciones push.", type: "warning" });
+            return;
+          }
+
+          const registration = await navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+          const existingSub = await registration.pushManager.getSubscription();
+          const subscription = existingSub || await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+          });
+
+          const subscribeResp = await fetch("{{ url_for('notifications.push_subscribe') }}", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrfToken,
+            },
+            body: JSON.stringify(subscription.toJSON()),
+          });
+          const subscribeData = await subscribeResp.json();
+          if (!subscribeResp.ok || !subscribeData.ok) {
+            createNotification({ title: "Error de activación", message: "No se pudo guardar la suscripción push.", type: "error" });
+            return;
+          }
+
+          createNotification({ title: "Notificaciones activadas", message: "Ahora recibirás notificaciones push del sistema.", type: "success" });
+          setPushButtonState("active");
+        } catch (_) {
+          createNotification({ title: "Error de activación", message: "No fue posible activar notificaciones push.", type: "error" });
+          setPushButtonState("idle");
+        } finally {
+          pushEnableButtons.forEach((btn) => { btn.disabled = false; });
+        }
+      }
+
+      async function loadInitialFeed() {
+        try {
+          const resp = await fetch("{{ url_for('notifications.feed_notifications') }}", { credentials: "same-origin" });
+          if (!resp.ok) return;
+          const data = await resp.json();
+          state.items = Array.isArray(data.notifications) ? data.notifications : [];
+          updateBadge(data.unread_count || 0);
+          renderNotificationPanel();
+        } catch (_) {}
+      }
+
+      function inferNotificationType(payload) {
+        const text = `${payload.title || ""} ${payload.message || ""}`.toLowerCase();
+        if (text.includes("rechazada") || text.includes("error") || text.includes("adeudo")) return "error";
+        if (text.includes("aprobada") || text.includes("listo") || text.includes("abierto")) return "success";
+        if (text.includes("pendiente") || text.includes("actualizado")) return "warning";
+        return "info";
+      }
+
+      const viewFragmentSelectorsByPath = {
+        "/reservations/admin": "#reservations-admin-queue-container",
+        "/reservations/admin/approved": "#reservations-admin-approved-container",
+        "/reservations/admin/tickets/closure-requests": "#reservations-admin-closure-requests-container",
+        "/reservations/admin/approved/history": "#reservations-admin-approved-history-container",
+        "/reservations/my": "#reservations-my-list-container",
+        "/debts/admin": "#debts-admin-list-container",
+        "/debts/my": "#debts-my-list-container",
+      };
+      const viewFragmentSelectorsByPrefix = [
+        ["/reservations/my/", "#ticket-my-container"],
+        ["/reservations/admin/tickets/", "#ticket-detail-container"],
+      ];
+      let isRefreshingView = false;
+      let refreshViewTimer = null;
+
+      function currentViewFragmentSelector() {
+        const pathname = (window.location && window.location.pathname) || "";
+        if (viewFragmentSelectorsByPath[pathname]) return viewFragmentSelectorsByPath[pathname];
+        const matchedPrefix = viewFragmentSelectorsByPrefix.find(([prefix]) => pathname.startsWith(prefix));
+        return matchedPrefix ? matchedPrefix[1] : null;
+      }
+
+      async function refreshCurrentViewFragment() {
+        const selector = currentViewFragmentSelector();
+        if (!selector || isRefreshingView) return;
+
+        const currentFragment = document.querySelector(selector);
+        if (!currentFragment) return;
+
+        isRefreshingView = true;
+        try {
+          const resp = await fetch(window.location.href, {
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+          if (!resp.ok) {
+            console.warn("Partial refresh failed: response not OK", resp.status);
+            return;
+          }
+
+          const html = await resp.text();
+          const parser = new DOMParser();
+          const nextDoc = parser.parseFromString(html, "text/html");
+          const nextFragment = nextDoc.querySelector(selector);
+          if (!nextFragment) return;
+
+          currentFragment.replaceWith(nextFragment);
+        } catch (err) {
+          console.warn("Partial refresh failed", err);
+        } finally {
+          isRefreshingView = false;
+        }
+      }
+
+      function scheduleCurrentViewFragmentRefresh() {
+        if (!currentViewFragmentSelector()) return;
+        if (refreshViewTimer) clearTimeout(refreshViewTimer);
+        refreshViewTimer = setTimeout(() => {
+          refreshCurrentViewFragment();
+        }, 180);
+      }
+
+      let sseRetryCount = 0;
+      let fallbackPollTimer = null;
+      let fallbackNoticeShown = false;
+
+      function stopFallbackPolling() {
+        if (!fallbackPollTimer) return;
+        clearInterval(fallbackPollTimer);
+        fallbackPollTimer = null;
+      }
+
+      function startFallbackPolling() {
+        if (fallbackPollTimer) return;
+        fallbackPollTimer = setInterval(() => {
+          loadInitialFeed();
+        }, 12000);
+        if (!fallbackNoticeShown) {
+          fallbackNoticeShown = true;
+          createNotification({
+            title: "Notificaciones",
+            message: "Conexión en tiempo real inestable. Activamos actualización automática para mantenerte sincronizado.",
+            type: "warning",
+          });
+        }
+      }
+
+      function connectSSE() {
+        const source = new EventSource("{{ url_for('notifications.stream_notifications') }}");
+        source.addEventListener("connected", () => {
+          sseRetryCount = 0;
+          stopFallbackPolling();
+        });
+        source.addEventListener("notification_created", (event) => {
+          const payload = JSON.parse(event.data || "{}");
+          upsertNotification(payload);
+          updateBadge(payload.unread_count || 0);
+          renderNotificationPanel();
+          window.dispatchEvent(new CustomEvent("coyolabs:notification_created", { detail: payload }));
+          createNotification({
+            title: payload.title || "Nueva notificación",
+            message: payload.message || "",
+            type: inferNotificationType(payload),
+          });
+          scheduleCurrentViewFragmentRefresh();
+        });
+        source.addEventListener("error", () => {
+          source.close();
+          sseRetryCount += 1;
+          if (sseRetryCount >= 3) {
+            startFallbackPolling();
+          }
+          setTimeout(connectSSE, 2000);
+        });
+      }
+
+      async function markAllNotificationsRead() {
+        try {
+          const body = new URLSearchParams();
+          body.set("csrf_token", csrfToken);
+          const resp = await fetch("{{ url_for('notifications.mark_all_read') }}", {
+            method: "POST",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: body.toString(),
+            credentials: "same-origin",
+          });
+          if (!resp.ok) {
+            createNotification({
+              title: "Notificaciones",
+              message: "No se pudo marcar todo como leído. Intenta nuevamente.",
+              type: "error",
+            });
+            return;
+          }
+          const data = await resp.json();
+          state.items = state.items.map((item) => ({ ...item, is_read: true }));
+          updateBadge(data.unread_count || 0);
+          renderNotificationPanel();
+        } catch (_) {
+          createNotification({
+            title: "Notificaciones",
+            message: "Error de conexión al marcar notificaciones como leídas.",
+            type: "error",
+          });
+        }
+      }
+
+      async function clearReadNotifications() {
+        try {
+          const body = new URLSearchParams();
+          body.set("csrf_token", csrfToken);
+          const resp = await fetch("{{ url_for('notifications.clear_read') }}", {
+            method: "POST",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: body.toString(),
+            credentials: "same-origin",
+          });
+          if (!resp.ok) {
+            createNotification({
+              title: "Notificaciones",
+              message: "No se pudieron limpiar las notificaciones leídas.",
+              type: "error",
+            });
+            return;
+          }
+          const data = await resp.json();
+          updateBadge(data.unread_count || 0);
+          await loadInitialFeed();
+          createNotification({
+            title: "Notificaciones",
+            message: "Notificaciones leídas limpiadas correctamente.",
+            type: "success",
+          });
+        } catch (_) {
+          createNotification({
+            title: "Notificaciones",
+            message: "Error de conexión al limpiar notificaciones leídas.",
+            type: "error",
+          });
+        }
+      }
+
+      const flashRaw = document.getElementById("flashMessagesData")?.textContent || "[]";
+      let flashMessages = [];
+      try {
+        flashMessages = JSON.parse(flashRaw);
+      } catch (_) {}
+      flashMessages.forEach((item) => {
+        const category = Array.isArray(item) ? item[0] : "info";
+        const message = Array.isArray(item) ? item[1] : "";
+        createNotification({
+          title: "Sistema",
+          message: message || "",
+          type: normalizeToastType(category),
+        });
+      });
+
+      logoToggle.addEventListener("click", () => {
+        const willOpen = !center.classList.contains("is-open");
+        center.classList.toggle("is-open");
+        if (willOpen) markAllNotificationsRead();
+      });
+      markAllBtn.addEventListener("click", () => {
+        markAllNotificationsRead();
+      });
+      clearReadBtn.addEventListener("click", () => {
+        clearReadNotifications();
+      });
+      document.addEventListener("click", (evt) => {
+        if (!evt.target.closest(".brand")) center.classList.remove("is-open");
+      });
+
+      loadInitialFeed();
+      if (pushEnableButtons.length) {
+        syncPushButtonState().catch(() => setPushButtonState("idle"));
+        pushEnableButtons.forEach((btn) => {
+          btn.addEventListener("click", enableWebPush);
+        });
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.addEventListener("message", (event) => {
+            if (event?.data?.type === "PUSH_SUBSCRIPTION_CHANGED") {
+              syncPushButtonState().catch(() => setPushButtonState("idle"));
+            }
+          });
+        }
+      }
+      connectSSE();
+    })();
+  </script>
+  {% endif %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

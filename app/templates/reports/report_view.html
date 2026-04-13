@@ -1,0 +1,413 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Reportes", url_for('reports.reports_home')), (report_title, request.path)] %}
+{% set report_column_labels = {
+  'id': 'ID',
+  'lab_id': 'Laboratorio',
+  'user_id': 'Usuario',
+  'material_id': 'Material',
+  'name': 'Nombre',
+  'pieces_text': 'Piezas (texto)',
+  'pieces_qty': 'Cantidad',
+  'brand': 'Marca',
+  'model': 'Modelo',
+  'code': 'Código',
+  'serial': 'Serie',
+  'tutorial_url': 'URL tutorial',
+  'image_ref': 'Imagen',
+  'source_file': 'Archivo origen',
+  'source_sheet': 'Hoja origen',
+  'source_row': 'Fila origen',
+  'metadata_json': 'Metadatos',
+  'signature_ref': 'Firma',
+  'exit_time': 'Hora de salida',
+  'teacher_comments': 'Comentarios del docente',
+  'evidence_ref': 'Evidencia',
+  'status': 'Estado',
+  'created_at': 'Creado',
+  'updated_at': 'Actualizado',
+  'closed_at': 'Cerrado',
+  'amount': 'Monto',
+  'reason': 'Motivo',
+  'description': 'Descripción',
+  'module': 'Módulo',
+  'entity_label': 'Entidad',
+  'action': 'Acción',
+  'date': 'Fecha',
+  'room': 'Salón/Lab',
+  'start_time': 'Inicio',
+  'end_time': 'Fin',
+  'group_name': 'Grupo',
+  'teacher_name': 'Docente',
+  'subject': 'Materia',
+  'notes': 'Notas',
+  'version': 'Versión',
+  'license_type': 'Licencia',
+  'update_requested': 'Actualización solicitada',
+  'update_note': 'Nota de actualización',
+  'title': 'Título',
+  'location': 'Ubicación',
+  'admin_note': 'Nota administrativa',
+  'reported_by_user_id': 'Reportado por',
+  'request_date': 'Fecha de solicitud'
+} %}
+{% block title %}{{ report_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .report-view-page{
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .report-view-header{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .report-view-actions{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .report-view-filters{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .report-view-filters .toolbar-group{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .report-columns-card{
+    margin-top: 12px;
+    border: 1px dashed var(--stroke-strong);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.2);
+    padding: 12px;
+  }
+  .report-columns-list{
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .report-columns-list label{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .9rem;
+    color: var(--text-soft);
+  }
+  .column-limit-note{
+    margin-top: 8px;
+    font-size: .9rem;
+    color: #7b5a12;
+  }
+
+  .report-view-meta{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .report-view-card{
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 18px;
+  }
+
+  .report-view-topbar{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .report-view-topbar h3{
+    margin: 0;
+    color: var(--text);
+    font-size: 1.3rem;
+  }
+
+  .report-count{
+    color: var(--text-dim);
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .report-table-wrap{
+    overflow: auto;
+    border: 1px solid var(--stroke);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.26);
+    max-height: 72vh;
+  }
+
+  .report-table{
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .report-table thead th{
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, rgba(226,193,90,0.26), rgba(199,159,51,0.14));
+    color: #5b4410;
+    text-align: left;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--stroke-strong);
+    font-size: 0.92rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .report-table tbody td{
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(102,81,45,0.08);
+    color: var(--text-soft);
+    vertical-align: top;
+    font-size: 0.95rem;
+    background: rgba(255,255,255,0.14);
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .report-table tbody tr:hover td{
+    background: rgba(255,255,255,0.28);
+  }
+
+  .report-table tbody tr:last-child td{
+    border-bottom: none;
+  }
+
+  .empty-report{
+    padding: 26px 20px;
+    border: 1px dashed var(--stroke-strong);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.22);
+    color: var(--text-soft);
+  }
+
+  .empty-report strong{
+    display: block;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  @media (max-width: 768px){
+    .report-view-card{
+      padding: 14px;
+    }
+
+    .report-view-topbar h3{
+      font-size: 1.1rem;
+    }
+    .report-view-actions .btn{
+      width: 100%;
+    }
+    .report-table-wrap{
+      border-radius: 14px;
+      position: relative;
+    }
+    .report-table-wrap::before{
+      content: "Desliza horizontalmente para ver todas las columnas";
+      position: sticky;
+      left: 0;
+      display: block;
+      font-size: .76rem;
+      color: var(--text-dim);
+      background: rgba(255,255,255,.8);
+      padding: 6px 10px;
+      border-bottom: 1px dashed var(--stroke);
+      z-index: 3;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="report-view-page">
+  <header class="topbar report-view-header">
+    <div>
+      <p class="page-kicker">Reporte</p>
+      <h1>{{ report_title }}</h1>
+      {% if report_description %}
+        <p class="page-subtitle">{{ report_description }}</p>
+      {% endif %}
+    </div>
+
+    <div class="report-view-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reports.reports_home') }}">
+        ← Volver a reportes
+      </a>
+      <a class="btn btn-ghost" href="{{ download_url }}">
+        Descargar CSV
+      </a>
+      {% if download_excel_url %}
+      <a class="btn btn-gold" href="{{ download_excel_url }}">
+        Descargar Excel
+      </a>
+      {% endif %}
+      {% if download_pdf_url %}
+      <a class="btn btn-ghost" href="{{ download_pdf_url }}">
+        Descargar PDF
+      </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <section class="toolbar-card">
+    <div class="toolbar-group" style="margin-bottom:12px;">
+      <label for="reportLiveSearch">Búsqueda rápida en resultados cargados</label>
+      <div class="search-box">
+        <i class="ph ph-magnifying-glass search-icon"></i>
+        <input class="form-control" id="reportLiveSearch" type="text" placeholder="Filtrar por texto en la tabla" autocomplete="off">
+      </div>
+    </div>
+    <form method="get" action="{{ request.path }}">
+      {% for key, value in fixed_filters.items() %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endfor %}
+      {% if filter_fields %}
+      <div class="report-view-filters">
+        {% for field in filter_fields %}
+          <div class="toolbar-group">
+            <label for="filter_{{ field.name }}">{{ field.label }}</label>
+            <input
+              class="form-control"
+              id="filter_{{ field.name }}"
+              type="{{ field.type or 'text' }}"
+              name="{{ field.name }}"
+              value="{{ field.value or '' }}"
+              {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
+            >
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <details class="report-columns-card" open>
+        <summary><strong>Columnas visibles y exportables</strong></summary>
+        {% if column_limit %}
+          <div class="column-limit-note" id="columnLimitNote">Máximo {{ column_limit }} columnas para impresión/exportación.</div>
+        {% endif %}
+        {% if column_limit_message %}
+          <div class="column-limit-note">{{ column_limit_message }}</div>
+        {% endif %}
+        <div class="report-columns-list">
+          {% for col in all_columns %}
+            <label>
+              <input type="checkbox" name="cols" value="{{ col }}" {% if col in selected_columns %}checked{% endif %}>
+              <span>{{ report_column_labels.get(col, col|replace('_', ' ')|title) }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </details>
+
+      <div class="toolbar-actions" style="margin-top:12px;">
+        <button type="submit" class="btn btn-gold">Aplicar filtros</button>
+        <a class="btn btn-ghost" href="{{ request.path }}">Limpiar</a>
+      </div>
+    </form>
+  </section>
+
+  <div class="report-view-meta">
+    <span>{{ rows|length }} registros</span>
+    {% if extra_meta %}
+      <span>{{ extra_meta }}</span>
+    {% endif %}
+  </div>
+
+  <section class="report-view-card">
+    <div class="report-view-topbar">
+      <h3>Vista completa</h3>
+      <span class="report-count">{{ columns|length }} columnas</span>
+    </div>
+
+    {% if rows and columns %}
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              {% for col in columns %}
+                <th>{{ report_column_labels.get(col, col|replace('_', ' ')|title) }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                {% for value in row %}
+                  <td>{{ value if value is not none and value != "" else "-" }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-report">
+        <strong>Sin datos.</strong>
+        No hay información para mostrar en este reporte.
+      </div>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+  const input = document.getElementById("reportLiveSearch");
+  const rows = Array.from(document.querySelectorAll(".report-table tbody tr"));
+  if (input && rows.length) {
+    const applyFilter = () => {
+      const query = (input.value || "").trim().toLowerCase();
+      rows.forEach((row) => {
+        const text = (row.textContent || "").toLowerCase();
+        row.style.display = !query || text.includes(query) ? "" : "none";
+      });
+    };
+    input.addEventListener("input", applyFilter);
+  }
+
+  const maxColumns = Number({{ column_limit or 'null' }});
+  const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"][name="cols"]'));
+  if (!maxColumns || !checkboxes.length) return;
+  const limitNote = document.getElementById("columnLimitNote");
+
+  const selectedCount = () => checkboxes.filter((cb) => cb.checked).length;
+  const updateDisabled = () => {
+    const atLimit = selectedCount() >= maxColumns;
+    checkboxes.forEach((cb) => {
+      cb.disabled = atLimit && !cb.checked;
+    });
+  };
+
+  checkboxes.forEach((cb) => {
+    cb.addEventListener("change", () => {
+      if (selectedCount() > maxColumns) {
+        cb.checked = false;
+        if (limitNote) {
+          limitNote.textContent = `Máximo ${maxColumns} columnas para impresión/exportación.`;
+        }
+      }
+      updateDisabled();
+    });
+  });
+  updateDisabled();
+})();
+</script>
+{% endblock %}

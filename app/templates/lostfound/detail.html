@@ -1,0 +1,168 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Objetos perdidos", url_for('lostfound.list_items')), ("Detalle", url_for('lostfound.detail', item_id=item.id))] %}
+{% block title %}Detalle objeto perdido{% endblock %}
+{% block content %}
+<style>
+.lostfound-evidence-img{
+  max-width: min(100%, 760px);
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  display: block;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+}
+
+.lostfound-cta{
+  margin-top: 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,.7);
+  font-weight: 600;
+}
+
+.lostfound-cta--found{
+  border-color: rgba(91,165,111,.28);
+  background: rgba(91,165,111,.12);
+  color: #2f6b44;
+}
+
+.lostfound-cta--reported{
+  border-color: rgba(212,166,61,.35);
+  background: rgba(212,166,61,.14);
+  color: #8c6914;
+}
+
+@media (max-width: 768px){
+  .lostfound-detail-back .btn{
+    width: 100%;
+  }
+
+  .lostfound-detail-admin-form{
+    grid-template-columns: 1fr !important;
+  }
+
+  .lostfound-detail-admin-form .toolbar-actions{
+    width: 100%;
+  }
+
+  .lostfound-detail-admin-form .toolbar-actions .btn{
+    width: 100%;
+  }
+  .lostfound-detail-specs td{
+    display:block;
+    width:100%;
+  }
+  .lostfound-detail-specs tr{
+    display:block;
+    border-bottom:1px dashed rgba(102,81,45,.18);
+    padding:8px 0;
+  }
+  .lostfound-detail-specs tr:last-child{
+    border-bottom:none;
+  }
+  .lostfound-detail-specs td:first-child{
+    font-size:.78rem;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    padding-bottom:4px;
+  }
+}
+</style>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Objetos perdidos</p>
+    <h1>Detalle del registro #{{ item.id }}</h1>
+    <p class="page-subtitle">Información del objeto y acciones administrativas.</p>
+  </div>
+</header>
+
+<section class="toolbar-card">
+  <div class="toolbar-actions lostfound-detail-back">
+    <a class="btn btn-ghost" href="{{ url_for('lostfound.list_items') }}">Volver</a>
+  </div>
+</section>
+
+<section class="table-card" style="margin-bottom:16px;">
+  {% set is_found = item.status in ['IN_STORAGE', 'RETURNED'] %}
+  {% set fallback_image = url_for('static', filename='uploads/lostfound/not_found.jpg') %}
+  {% set raw_image = (item.evidence_ref or '')|replace('\\', '/')|trim %}
+  {% if raw_image.startswith('http://') or raw_image.startswith('https://') %}
+    {% set image_src = raw_image %}
+  {% elif raw_image.startswith('/static/') %}
+    {% set image_src = raw_image %}
+  {% elif raw_image.startswith('static/') %}
+    {% set image_src = url_for('static', filename=raw_image|replace('static/', '', 1)) %}
+  {% elif raw_image %}
+    {% if raw_image.startswith('uploads/') %}
+      {% set static_rel = raw_image %}
+    {% elif 'lostfound/' in raw_image %}
+      {% set static_rel = 'uploads/' ~ (raw_image.split('lostfound/', 1)[1] if 'lostfound/' in raw_image else raw_image) %}
+      {% set static_rel = 'uploads/lostfound/' ~ static_rel.split('uploads/', 1)[1] if static_rel.startswith('uploads/') else static_rel %}
+    {% else %}
+      {% set static_rel = raw_image %}
+    {% endif %}
+    {% set image_src = url_for('static', filename=static_rel) %}
+  {% else %}
+    {% set image_src = fallback_image %}
+  {% endif %}
+  <div style="margin-bottom:14px;">
+    <img
+      class="lostfound-evidence-img"
+      src="{{ image_src }}"
+      onerror="this.onerror=null; this.src='{{ fallback_image }}';"
+      alt="Evidencia del objeto {{ item.title }}"
+    >
+  </div>
+
+  <div class="table-wrap">
+    <table class="inventory-table lostfound-detail-specs" style="min-width:800px;">
+      <tbody>
+        <tr><td><strong>Nombre</strong></td><td>{{ item.title }}</td></tr>
+        <tr><td><strong>Estado del caso</strong></td><td>{{ status_label_fn(item.status) }}</td></tr>
+        <tr><td><strong>Descripción</strong></td><td>{{ item.description or '-' }}</td></tr>
+        <tr><td><strong>Fecha</strong></td><td>{{ item.created_at }}</td></tr>
+        <tr><td><strong>Nota admin</strong></td><td>{{ item.admin_note or '-' }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="lostfound-cta {% if is_found %}lostfound-cta--found{% else %}lostfound-cta--reported{% endif %}">
+    {% if is_found %}
+      Caso bajo resguardo administrativo. Si reconoces el objeto, contacta a administración.
+    {% else %}
+      Caso abierto de pérdida reportada. Si tienes información, repórtala a administración.
+    {% endif %}
+  </div>
+</section>
+
+{% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+<section class="toolbar-card">
+  <h3 style="margin-bottom: 10px;">Acciones (Administración)</h3>
+  <form method="post" action="{{ url_for('lostfound.admin_set_status', item_id=item.id) }}" class="toolbar lostfound-detail-admin-form" style="grid-template-columns: 1fr 1fr auto;">
+    <div class="toolbar-group">
+      <label for="status">Nuevo estado</label>
+      <div class="select-wrap">
+        <select id="status" name="status" required>
+          <option value="REPORTED" {% if item.status == 'REPORTED' %}selected{% endif %}>Pérdida reportada</option>
+          <option value="IN_STORAGE" {% if item.status == 'IN_STORAGE' %}selected{% endif %}>Hallazgo en resguardo</option>
+          <option value="RETURNED" {% if item.status == 'RETURNED' %}selected{% endif %}>Entregado a propietario</option>
+        </select>
+        <i class="ph ph-caret-down select-arrow"></i>
+      </div>
+    </div>
+    <div class="toolbar-group">
+      <label for="admin_note">Nota (opcional)</label>
+      <div class="search-box">
+        <i class="ph ph-note search-icon"></i>
+        <input id="admin_note" type="text" name="admin_note" placeholder="Ejemplo: Entregado en coordinación">
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <button type="submit" class="btn btn-gold">Actualizar</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

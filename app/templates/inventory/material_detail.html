@@ -1,0 +1,80 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Inventario", url_for('inventory.inventory_list')), (material.name | smart_title, url_for('inventory.material_detail', material_id=material.id))] %}
+{% block title %}Detalle de material{% endblock %}
+
+{% block content %}
+<style>
+  .material-detail-table td{
+    vertical-align: top;
+    word-break: break-word;
+  }
+  @media (max-width: 900px){
+    .material-detail-actions{
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .material-detail-actions .btn{
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Inventario</p>
+    <h1>{{ material.name | smart_title }}</h1>
+    <p class="page-subtitle">Detalle técnico y trazabilidad del material.</p>
+  </div>
+</header>
+
+<section class="stats-row">
+  <article class="stat-card"><span class="stat-label">Laboratorio</span><strong>{{ material.lab.name }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Carrera</span><strong>{{ material.career.name if material.career else 'Sin carrera' }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Categoría</span><strong>{{ material.category or 'Sin categoría' }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Estado</span><strong>{{ material.status | smart_title }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Piezas</span><strong>{{ material.pieces_text }}</strong></article>
+</section>
+
+<section class="table-card" style="margin-bottom:18px;">
+  <div class="toolbar-actions material-detail-actions" style="margin-bottom: 12px;">
+    <a class="btn btn-ghost" href="{{ url_for('inventory.inventory_list') }}"><i class="ph ph-arrow-left"></i><span>Volver al inventario</span></a>
+    {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+    <a class="btn btn-gold" href="{{ url_for('inventory.admin_edit_material', material_id=material.id) }}"><i class="ph ph-pencil-simple"></i><span>Editar</span></a>
+    {% endif %}
+  </div>
+  <div class="table-wrap">
+    <table class="inventory-table material-detail-table">
+      <tbody>
+        <tr><td><strong>ID interno</strong></td><td>{{ material.id }}</td></tr>
+        <tr><td><strong>Ubicación</strong></td><td>{{ material.location | smart_title }}</td></tr>
+        <tr><td><strong>Marca</strong></td><td>{{ material.brand or '-' }}</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>{{ material.model or '-' }}</td></tr>
+        <tr><td><strong>Código</strong></td><td>{{ material.code or '-' }}</td></tr>
+        <tr><td><strong>Serie</strong></td><td>{{ material.serial or '-' }}</td></tr>
+        <tr><td><strong>Observaciones</strong></td><td>{{ material.notes or 'Sin observaciones' }}</td></tr>
+        {% if material_image_src %}
+          <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>
+        {% else %}
+          <tr><td><strong>Imagen</strong></td><td><div style="max-width:340px;width:100%;height:180px;border-radius:10px;border:1px dashed var(--stroke);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45);color:var(--text-dim);">Sin imagen disponible</div></td></tr>
+        {% endif %}
+        {% if material.tutorial_url %}
+          <tr><td><strong>Manual</strong></td><td><a class="item-link" target="_blank" rel="noopener noreferrer" href="{{ material.tutorial_url }}">{{ material.tutorial_url }}</a></td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  (() => {
+    const form = document.querySelector("form[data-single-submit]");
+    if (!form) return;
+    form.addEventListener("submit", () => {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (!submitBtn || submitBtn.disabled) return;
+      submitBtn.disabled = true;
+      submitBtn.dataset.originalText = submitBtn.textContent;
+      submitBtn.textContent = submitBtn.dataset.submitLabel || "Guardando...";
+    });
+  })();
+</script>
+{% endblock %}

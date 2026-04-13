@@ -1,0 +1,189 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Notificaciones", url_for('notifications.list_notifications'))] %}
+{% block title %}Notificaciones{% endblock %}
+
+{% block content %}
+<style>
+  .notifications-topbar-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .notifications-container {
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .notification-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(82, 99, 107, 0.18);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+  }
+
+  .notification-card.is-unread {
+    border-color: rgba(199, 159, 51, 0.36);
+    background: #fffcf5;
+  }
+
+  .notification-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .notification-title {
+    margin: 0;
+    font-weight: 600;
+    color: #2f3e46;
+  }
+
+  .notification-content p {
+    margin: 0;
+    color: #4e5f67;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .notification-date {
+    margin-top: 7px;
+    font-size: 12px;
+    opacity: .7;
+    color: #5f7078;
+  }
+
+  .notification-action {
+    flex-shrink: 0;
+  }
+
+  .notification-action button {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+</style>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Sistema</p>
+    <h1>Notificaciones</h1>
+    <p class="page-subtitle">Eventos recientes y avisos del sistema.</p>
+  </div>
+
+  <div class="notifications-topbar-actions">
+    <button type="button" class="btn btn-ghost" data-push-enable-btn>
+      <i class="ph ph-bell-ringing"></i>
+      <span>Activar notificaciones</span>
+    </button>
+
+    <button type="button" class="btn btn-gold" id="markAllReadPageBtn">
+      <i class="ph ph-check-circle"></i>
+      <span>Marcar todo leído</span>
+    </button>
+
+    <button type="button" class="btn btn-danger" id="clearReadPageBtn">
+      <i class="ph ph-trash"></i>
+      <span>Limpiar leídas</span>
+    </button>
+  </div>
+</header>
+
+<section class="notifications-container">
+{% if notifications %}
+  <div class="notifications-list">
+    {% for n in notifications %}
+    <form method="post" action="{{ url_for('notifications.mark_read', notif_id=n.id) }}" class="notification-card {% if not n.is_read %}is-unread{% endif %}">
+      <div class="notification-content">
+        <div class="notification-header">
+          <h3 class="notification-title">{{ n.title }}</h3>
+          {% if not n.is_read %}
+            <span class="status-badge status-warn">NUEVA</span>
+          {% else %}
+            <span class="status-badge status-neutral">LEÍDA</span>
+          {% endif %}
+          {% if n.is_persistent %}
+            <span class="status-badge status-bad">PERSISTENTE</span>
+          {% endif %}
+        </div>
+        <p>{{ n.message }}</p>
+        <div class="notification-date">{{ n.created_at }}</div>
+      </div>
+
+      <div class="notification-action">
+        <button type="submit" class="btn btn-ghost">Abrir</button>
+      </div>
+    </form>
+    {% endfor %}
+  </div>
+{% else %}
+  <section class="empty-state" style="margin-top:14px;">
+    <i class="ph ph-bell empty-icon"></i>
+    <h3>Sin notificaciones</h3>
+    <p>No tienes avisos pendientes.</p>
+  </section>
+{% endif %}
+</section>
+
+<script>
+document.getElementById("markAllReadPageBtn")?.addEventListener("click", async () => {
+  const body = new URLSearchParams();
+  body.set("csrf_token", "{{ csrf_token }}");
+
+  const resp = await fetch("{{ url_for('notifications.mark_all_read') }}", {
+    method: "POST",
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+    credentials: "same-origin",
+  });
+
+  if (resp.ok) {
+    window.location.reload();
+  }
+});
+
+document.getElementById("clearReadPageBtn")?.addEventListener("click", async () => {
+  if (!confirm("Esto eliminará todas las notificaciones leídas. ¿Continuar?")) return;
+
+  const body = new URLSearchParams();
+  body.set("csrf_token", "{{ csrf_token }}");
+
+  const resp = await fetch("{{ url_for('notifications.clear_read') }}", {
+    method: "POST",
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+    credentials: "same-origin",
+  });
+
+  if (resp.ok) {
+    window.location.reload();
+  }
+});
+</script>
+{% endblock %}

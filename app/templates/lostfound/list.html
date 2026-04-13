@@ -1,0 +1,217 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Objetos perdidos", url_for('lostfound.list_items'))] %}
+{% block title %}Objetos perdidos{% endblock %}
+{% block content %}
+<style>
+.lostfound-banner{
+  border: 1px solid rgba(91,165,111,.28);
+  background: linear-gradient(135deg, rgba(91,165,111,.14), rgba(255,255,255,.82));
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #28573a;
+}
+
+.lostfound-report-box{
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: rgba(255,255,255,.65);
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lostfound-feed{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+.lostfound-card{
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255,255,255,.84);
+  box-shadow: 0 10px 24px rgba(0,0,0,.06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  display:flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.lostfound-card:hover{
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px rgba(0,0,0,.11);
+  border-color: rgba(199,159,51,.35);
+}
+
+.lostfound-card-image{
+  width: 100%;
+  height: 180px;
+  display: block;
+  object-fit: cover;
+  background: rgba(255,255,255,.3);
+}
+
+.lostfound-card-body{
+  padding: 12px 13px 14px;
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.lostfound-card-title{
+  margin: 0;
+  font-size: 1rem;
+}
+
+.lostfound-card-desc{
+  margin: 0;
+  color: var(--text-dim);
+  font-size: .9rem;
+  line-height: 1.35;
+}
+
+.lostfound-meta{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 8px;
+}
+
+.lostfound-date{
+  font-size: .8rem;
+  color: var(--text-dim);
+}
+
+.lostfound-type{
+  font-size: .75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+}
+
+.lostfound-type--found{
+  color:#2f6b44;
+  background: rgba(91,165,111,.16);
+  border-color: rgba(91,165,111,.3);
+}
+
+.lostfound-type--reported{
+  color:#8c6914;
+  background: rgba(212,166,61,.18);
+  border-color: rgba(212,166,61,.38);
+}
+
+@media (max-width: 768px){
+  .lostfound-report-box{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lostfound-report-box .btn{
+    width: 100%;
+  }
+
+  .lostfound-list-filters .btn{
+    width: 100%;
+  }
+}
+</style>
+<header class="topbar"><div class="topbar-left"><p class="page-kicker">Objetos perdidos</p><h1>Objetos perdidos</h1><p class="page-subtitle">Consulta reportes y estado de resguardo o devolución.</p></div></header>
+
+<section class="lostfound-banner">
+  Seguimiento comunitario de casos: administración centraliza reportes y mantiene su trazabilidad.
+</section>
+
+<section class="lostfound-report-box">
+  <div>
+    {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+      <strong>¿Perdiste algo?</strong>
+      <p style="margin:4px 0 0; color:var(--text-dim);">Genera un reporte para que administración pueda ayudarte a localizarlo.</p>
+    {% else %}
+      <strong>¿Perdiste algo?</strong>
+      <p style="margin:4px 0 0; color:var(--text-dim);">Comparte la descripción con administración para que registren la pérdida y den seguimiento.</p>
+    {% endif %}
+  </div>
+  {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+    <a class="btn btn-gold" href="{{ url_for('lostfound.admin_new') }}">Registrar objeto perdido</a>
+  {% else %}
+  {% endif %}
+</section>
+
+<section class="toolbar-card">
+  <div class="toolbar-actions lostfound-list-filters">
+    {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+      <a class="btn {% if not status %}btn-gold{% else %}btn-ghost{% endif %}" href="{{ url_for('lostfound.list_items') }}">Todos</a>
+      <a class="btn {% if status == 'REPORTED' %}btn-gold{% else %}btn-ghost{% endif %}" href="{{ url_for('lostfound.list_items', status='REPORTED') }}">Reportado</a>
+      <a class="btn {% if status == 'IN_STORAGE' %}btn-gold{% else %}btn-ghost{% endif %}" href="{{ url_for('lostfound.list_items', status='IN_STORAGE') }}">En resguardo</a>
+      <a class="btn {% if status == 'RETURNED' %}btn-gold{% else %}btn-ghost{% endif %}" href="{{ url_for('lostfound.list_items', status='RETURNED') }}">Devuelto</a>
+    {% else %}
+      <span class="text-dim">Mostrando reportes de objetos perdidos.</span>
+    {% endif %}
+  </div>
+</section>
+
+{% if items|length == 0 %}
+  <section class="empty-state"><i class="ph ph-suitcase empty-icon"></i><h3>Sin registros</h3><p>No hay objetos perdidos para mostrar.</p></section>
+{% else %}
+  <section class="lostfound-feed">
+    {% for it in items %}
+      {% set is_found = it.status in ['IN_STORAGE', 'RETURNED'] %}
+      {% set fallback_image = url_for('static', filename='uploads/lostfound/not_found.jpg') %}
+      {% set raw_image = (it.evidence_ref or '')|replace('\\', '/')|trim %}
+      {% if raw_image.startswith('http://') or raw_image.startswith('https://') %}
+        {% set image_src = raw_image %}
+      {% elif raw_image.startswith('/static/') %}
+        {% set image_src = raw_image %}
+      {% elif raw_image.startswith('static/') %}
+        {% set image_src = url_for('static', filename=raw_image|replace('static/', '', 1)) %}
+      {% elif raw_image %}
+        {% if raw_image.startswith('uploads/') %}
+          {% set static_rel = raw_image %}
+        {% elif 'lostfound/' in raw_image %}
+          {% set static_rel = 'uploads/' ~ (raw_image.split('lostfound/', 1)[1] if 'lostfound/' in raw_image else raw_image) %}
+          {% set static_rel = 'uploads/lostfound/' ~ static_rel.split('uploads/', 1)[1] if static_rel.startswith('uploads/') else static_rel %}
+        {% else %}
+          {% set static_rel = raw_image %}
+        {% endif %}
+        {% set image_src = url_for('static', filename=static_rel) %}
+      {% else %}
+        {% set image_src = fallback_image %}
+      {% endif %}
+      <article class="lostfound-card">
+        <a href="{{ url_for('lostfound.detail', item_id=it.id) }}">
+          <img
+            class="lostfound-card-image"
+            src="{{ image_src }}"
+            onerror="this.onerror=null; this.src='{{ fallback_image }}';"
+            alt="Foto de {{ it.title }}"
+            loading="lazy"
+          >
+        </a>
+        <div class="lostfound-card-body">
+          <div class="lostfound-meta">
+            <span class="lostfound-type {% if is_found %}lostfound-type--found{% else %}lostfound-type--reported{% endif %}">
+              {{ status_label_fn(it.status) }}
+            </span>
+            <span class="lostfound-date">{{ it.created_at }}</span>
+          </div>
+          <h3 class="lostfound-card-title">{{ it.title }}</h3>
+          <p class="lostfound-card-desc">{{ (it.description or 'Sin descripción adicional')[:120] }}{% if it.description and it.description|length > 120 %}…{% endif %}</p>
+          <div style="margin-top:auto;">
+            <a class="btn btn-ghost" href="{{ url_for('lostfound.detail', item_id=it.id) }}">Ver detalle</a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% endif %}
+{% endblock %}

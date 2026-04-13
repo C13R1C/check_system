@@ -1,0 +1,137 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Administración usuarios", url_for('users.admin_panel')), ("Administrar perfiles y roles", url_for('users.create_admin_account'))] %}
+{% block title %}Administrar perfiles y roles{% endblock %}
+
+{% block content %}
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Gobernanza</p>
+    <h1>Administrar perfiles y roles</h1>
+    <p class="page-subtitle">{{ 'Resuelve perfiles pendientes y aplica cambios directos de rol.' if is_superadmin else 'Resuelve perfiles pendientes institucionales.' }}</p>
+  </div>
+</header>
+
+<section class="table-card">
+  <h3 style="margin-top:0;">Perfiles pendientes ({{ pending_accounts|length }})</h3>
+  {% if pending_accounts %}
+  <div class="table-wrap">
+    <table class="inventory-table table-mobile-cards" style="min-width:960px;">
+      <thead><tr><th>Email</th><th>Nombre</th><th>Matrícula</th><th>Creada</th><th>Asignar rol</th></tr></thead>
+      <tbody>
+        {% for user in pending_accounts %}
+        <tr>
+          <td>{{ user.email }}</td><td>{{ user.full_name or '-' }}</td><td>{{ user.matricula or '-' }}</td>
+          <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('users.assign_role', user_id=user.id) }}" style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div class="select-wrap" style="min-width:200px;">
+                <select name="role" required>
+                  <option value="">Selecciona rol</option>
+                  {% for role_name in pending_accounts_assignable_roles %}
+                  <option value="{{ role_name }}">{{ role_name|role_label }}</option>
+                  {% endfor %}
+                </select><i class="ph ph-caret-down select-arrow"></i>
+              </div>
+              <button class="btn btn-gold" type="submit">Asignar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p>No hay perfiles pendientes por resolver.</p>{% endif %}
+</section>
+
+{% if is_superadmin %}
+<section class="table-card">
+  <h3 style="margin-top:0;">Cambios de rol</h3>
+  {% if is_root_superadmin %}
+  <p class="text-dim" style="margin:6px 0 0 0;">Como SUPERADMIN padre, puedes promover usuarios al rol SUPERADMIN cuando sea necesario.</p>
+  {% endif %}
+  <form method="post" class="toolbar" style="grid-template-columns: 1fr 1fr auto; margin-top:12px;">
+    <input type="hidden" name="action" value="change_role">
+    <div class="toolbar-group" style="position:relative;">
+      <label for="roleUserSearch">Buscar usuario (correo o nombre)</label>
+      <div class="search-box">
+        <i class="ph ph-user search-icon"></i>
+        <input id="roleUserSearch" type="text" placeholder="Escribe correo o nombre" autocomplete="off" required>
+        <input type="hidden" id="roleUserId" name="user_id" required>
+      </div>
+      <div id="roleUserAutocomplete" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; z-index:30; background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:10px; margin-top:6px; max-height:220px; overflow:auto;"></div>
+    </div>
+    <div class="toolbar-group"><label>Nuevo rol</label><div class="select-wrap"><select name="role" required>
+      <option value="STUDENT">Estudiante</option><option value="TEACHER">Profesor</option><option value="STAFF">Staff</option><option value="ADMIN">Administrador</option>{% if is_root_superadmin %}<option value="SUPERADMIN">Superadministrador</option>{% endif %}
+    </select><i class="ph ph-caret-down select-arrow"></i></div></div>
+    <div class="toolbar-actions" style="align-self:end;"><button type="submit" class="btn btn-gold">Cambiar rol</button></div>
+  </form>
+</section>
+
+<script>
+(() => {
+  const USERS = [
+    {% for user in eligible_users %}
+    {
+      id: {{ user.id }},
+      email: {{ (user.email or '')|tojson }},
+      full_name: {{ (user.full_name or '')|tojson }},
+      role: {{ (user.role or '')|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const input = document.getElementById("roleUserSearch");
+  const hidden = document.getElementById("roleUserId");
+  const list = document.getElementById("roleUserAutocomplete");
+  if (!input || !hidden || !list) return;
+
+  function render(matches) {
+    if (!matches.length) {
+      list.innerHTML = '<div style="padding:10px 12px; color:var(--text-dim);">Sin coincidencias</div>';
+      return;
+    }
+    list.innerHTML = matches.map((u) => {
+      const title = (u.full_name || '').trim() || u.email;
+      const subtitle = `${u.email} · ${u.role}`;
+      return `<button type="button" class="autocomplete-item" data-user-id="${u.id}" style="width:100%; text-align:left; border:0; background:transparent; padding:10px 12px;">`
+        + `<strong style="display:block;">${title}</strong>`
+        + `<span style="font-size:.83rem; color:var(--text-dim);">${subtitle}</span>`
+        + `</button>`;
+    }).join("");
+  }
+
+  function searchUsers() {
+    const q = (input.value || '').trim().toLowerCase();
+    hidden.value = '';
+    if (!q) {
+      list.innerHTML = '';
+      return;
+    }
+    const matches = USERS.filter((u) => {
+      const email = (u.email || '').toLowerCase();
+      const name = (u.full_name || '').toLowerCase();
+      return email.includes(q) || name.includes(q);
+    }).slice(0, 12);
+    render(matches);
+  }
+
+  list.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-user-id]');
+    if (!btn) return;
+    const userId = btn.getAttribute('data-user-id');
+    const user = USERS.find((item) => String(item.id) === String(userId));
+    if (!user) return;
+    hidden.value = user.id;
+    input.value = (user.full_name || '').trim() ? `${user.full_name} · ${user.email}` : user.email;
+    list.innerHTML = '';
+  });
+
+  input.addEventListener('input', searchUsers);
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('#roleUserAutocomplete') || event.target === input) return;
+    list.innerHTML = '';
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

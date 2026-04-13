@@ -1,0 +1,321 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home'))] %}
+{% block title %}Mi inicio{% endblock %}
+
+{% block extra_css %}
+<style>
+  .home-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:16px}
+  .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--stroke);border-radius:18px;padding:18px;box-shadow:var(--shadow-md)}
+  .card-title{font-size:1.05rem;font-weight:800;margin-bottom:4px}
+  .card-subtitle{color:var(--text-dim);font-size:.92rem}
+  .hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;background:linear-gradient(135deg,rgba(91,140,114,.16),rgba(199,159,51,.15));border:1px solid var(--stroke-strong);border-radius:22px;padding:22px}
+  .hero > div:first-child{min-width:0;flex:1}
+  .hero .card{flex:0 0 320px}
+  .hero h1{font-size:clamp(1.4rem,2.3vw,2rem);margin-top:6px}
+  .hero p{margin-top:8px;color:var(--text-soft)}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.62);border:1px solid var(--stroke);font-size:.82rem;font-weight:700;color:var(--text-soft)}
+  .quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+  .quick-link{display:flex;align-items:center;gap:8px;padding:11px 12px;background:rgba(255,255,255,.52);border:1px solid var(--stroke);border-radius:12px;font-weight:700;color:var(--text-soft);transition:.2s}
+  .quick-link:hover{transform:translateY(-1px);border-color:var(--stroke-strong);color:var(--text)}
+  .list{margin-top:12px;display:grid;gap:10px}
+  .list-item{border:1px solid var(--stroke);border-radius:12px;padding:12px;background:rgba(255,255,255,.48)}
+  .list-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .meta{margin-top:6px;color:var(--text-soft);font-size:.9rem;display:flex;gap:12px;flex-wrap:wrap}
+  .status-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;line-height:1}
+  .status-ok{background:rgba(76,175,80,.15);color:#2e7d32}
+  .status-warn{background:rgba(255,152,0,.15);color:#ef6c00}
+  .status-bad{background:rgba(211,47,47,.15);color:#c62828}
+  .status-neutral{background:rgba(120,120,120,.12);color:#455a64}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:.8rem;font-weight:700;border:1px solid}
+  .chip-APPROVED,.chip-CLOSED,.chip-PAID{background:rgba(91,165,111,.15);border-color:rgba(91,165,111,.35);color:#2f6b44}
+  .chip-PENDING,.chip-OPEN{background:rgba(212,166,61,.16);border-color:rgba(212,166,61,.35);color:#7d5f13}
+  .chip-REJECTED,.chip-CANCELED{background:rgba(200,91,91,.14);border-color:rgba(200,91,91,.35);color:#893b3b}
+  .chip-REQUESTED,.chip-QUOTED,.chip-IN_PROGRESS{background:rgba(212,166,61,.16);border-color:rgba(212,166,61,.35);color:#7d5f13}
+  .chip-READY,.chip-READY_FOR_PICKUP,.chip-DELIVERED{background:rgba(91,165,111,.15);border-color:rgba(91,165,111,.35);color:#2f6b44}
+  .empty{margin-top:12px;border:1px dashed var(--stroke-strong);border-radius:12px;padding:16px;text-align:center;background:rgba(255,255,255,.42)}
+  .empty p{color:var(--text-soft);margin-bottom:10px}
+  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:10px;border:1px solid var(--stroke);background:rgba(255,255,255,.65);font-weight:700;color:var(--text-soft)}
+  .labs-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .labs-filter-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .labs-filter-input{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.82);box-shadow:var(--shadow-sm);transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+  .labs-filter-input:hover{border-color:var(--stroke-strong);transform:translateY(-1px)}
+  .labs-filter-input:focus-within{border-color:color-mix(in srgb,var(--brand,#b8872f) 48%,#ffffff);box-shadow:0 0 0 3px rgba(184,135,47,.14)}
+  .labs-filter-input i{color:var(--text-dim);font-size:1rem}
+  .labs-filter-input input{border:0;outline:none;background:transparent;min-height:42px;font:inherit;color:var(--text);min-width:150px}
+  .labs-filter-input select{border:0;outline:none;background:transparent;min-height:42px;font:inherit;color:var(--text);min-width:120px;padding-right:8px}
+  .labs-filter-input input:disabled,.labs-filter-input select:disabled{opacity:.72;cursor:not-allowed}
+  .labs-filter-btn{min-height:44px;padding:0 18px;border-radius:12px}
+  .labs-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+  .lab-card{background:linear-gradient(145deg,#f1f8f4,#e8f5e9);border:1px solid rgba(76,175,80,.25);border-radius:14px;padding:14px;transition:all .25s ease;position:relative;overflow:hidden}
+  .lab-card:hover{transform:translateY(-4px);box-shadow:0 10px 25px rgba(0,0,0,.08)}
+  .lab-card::before{content:\"\";position:absolute;left:0;top:0;height:100%;width:5px;background:#4caf50;border-radius:14px 0 0 14px}
+  .lab-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .lab-free{border-color:rgba(91,165,111,.35);background:rgba(91,165,111,.09)}
+  .lab-busy{border-color:rgba(200,91,91,.35);background:rgba(200,91,91,.09)}
+  .lab-pending{border-color:rgba(212,166,61,.35);background:rgba(212,166,61,.09)}
+  .lab-free::before{background:#4caf50}
+  .lab-busy::before{background:#d32f2f}
+  .lab-pending::before{background:#f9a825}
+  .lab-meta{margin-top:8px;font-size:.85rem;color:var(--text-soft);line-height:1.35}
+  .lab-slot{background:linear-gradient(145deg,#c8e6c9,#a5d6a7);color:#1b5e20;font-size:11px;padding:6px;border-radius:8px;text-align:center;margin-bottom:6px;transition:all .2s ease;font-weight:700}
+  .lab-slot:hover{background:#81c784;color:#fff}
+  .slot-available{background:#c8e6c9}
+  .slot-busy{background:#ffcdd2;color:#b71c1c}
+  .slot-pending{background:#fff9c4;color:#7d6500}
+  .section{margin-top:16px}
+
+  @media (max-width: 1140px){
+    .home-grid{grid-template-columns:1fr}
+  }
+  @media (max-width: 760px){
+    .hero{flex-direction:column}
+    .hero .card{width:100%;max-width:none !important;min-width:0 !important}
+    .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .labs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .labs-filter-controls{width:100%}
+    .labs-filter-input{flex:1 1 150px}
+    .labs-filter-btn{width:100%}
+  }
+  @media (max-width: 480px){
+    .quick-actions,.labs-grid{grid-template-columns:1fr}
+    .hero{padding:14px}
+    .badge{font-size:.75rem}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <span class="badge"><i class="ph ph-user"></i> HOME PERSONAL</span>
+    <h1>Hola, {{ current_user.full_name or current_user.email }}.</h1>
+    <p>Este es tu resumen personal: perfil, pendientes, reservas y disponibilidad de laboratorios.</p>
+    <div class="quick-actions">
+      <a class="quick-link" href="{{ url_for('profile.my_profile') }}"><i class="ph ph-user-circle"></i>Mi perfil</a>
+      <a class="quick-link" href="{{ url_for('reservations.request_reservation') }}"><i class="ph ph-calendar-plus"></i>Nueva reservación</a>
+      <a class="quick-link" href="{{ url_for('reservations.my_reservations') }}"><i class="ph ph-calendar-check"></i>Mis reservas</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Estado rápido</div>
+    <div class="list" style="margin-top:10px;">
+      <div class="list-item"><strong>{{ upcoming_reservations|length }}</strong> próximas reservas</div>
+      <div class="list-item"><strong>{{ my_open_debts|length }}</strong> adeudos activos</div>
+      <div class="list-item"><strong>{{ recent_material_requests|length }}</strong> solicitudes recientes</div>
+    </div>
+  </div>
+</section>
+
+<section class="home-grid">
+  <div>
+    <article class="card section">
+      <div class="card-title">Próximas reservas</div>
+      <div class="card-subtitle">Tus siguientes reservas programadas.</div>
+      {% if upcoming_reservations %}
+      <div class="list">
+        {% for r in upcoming_reservations %}
+        <div class="list-item">
+          <div class="list-head">
+            <strong>{{ r.room }}</strong>
+            {% set s = (r.status or '')|upper %}
+            <span class="status-badge {% if 'RECHAZ' in s %}status-bad{% elif 'ADEUDO' in s %}status-warn{% elif 'CERRADO' in s %}status-ok{% elif 'READY' in s %}status-ok{% elif s in ['APPROVED', 'CLOSED', 'PAID', 'DELIVERED'] %}status-ok{% elif s in ['PENDING', 'OPEN', 'REQUESTED', 'QUOTED', 'IN_PROGRESS'] %}status-warn{% elif s in ['REJECTED', 'CANCELED'] %}status-bad{% else %}status-neutral{% endif %}">
+              {{ r.status|status_label }}
+            </span>
+          </div>
+          <div class="meta">
+            <span><i class="ph ph-calendar"></i> {{ r.date.strftime('%d/%m/%Y') }}</span>
+            <span><i class="ph ph-clock"></i> {{ r.start_time.strftime('%H:%M') }} - {{ r.end_time.strftime('%H:%M') }}</span>
+            <span><i class="ph ph-book"></i> {{ r.subject_rel.name if r.subject_rel else r.subject }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">
+        <p>No tienes reservas próximas.</p>
+        <a class="btn btn-ghost" href="{{ url_for('reservations.request_reservation') }}"><i class="ph ph-calendar-plus"></i>Crear reservación</a>
+      </div>
+      {% endif %}
+    </article>
+
+    <article class="card section">
+      <div class="card-title">Historial reciente</div>
+      <div class="card-subtitle">Últimas reservaciones registradas en tu cuenta.</div>
+      {% if recent_reservations %}
+      <div class="list">
+        {% for r in recent_reservations %}
+        <div class="list-item">
+          <div class="list-head">
+            <strong>{{ r.room }}</strong>
+            {% set s = (r.status or '')|upper %}
+            <span class="status-badge {% if 'RECHAZ' in s %}status-bad{% elif 'ADEUDO' in s %}status-warn{% elif 'CERRADO' in s %}status-ok{% elif 'READY' in s %}status-ok{% elif s in ['APPROVED', 'CLOSED', 'PAID', 'DELIVERED'] %}status-ok{% elif s in ['PENDING', 'OPEN', 'REQUESTED', 'QUOTED', 'IN_PROGRESS'] %}status-warn{% elif s in ['REJECTED', 'CANCELED'] %}status-bad{% else %}status-neutral{% endif %}">
+              {{ r.status|status_label }}
+            </span>
+          </div>
+          <div class="meta">
+            <span>{{ r.date.strftime('%d/%m/%Y') }}</span>
+            <span>{{ r.start_time.strftime('%H:%M') }} - {{ r.end_time.strftime('%H:%M') }}</span>
+            <span>{{ r.subject_rel.name if r.subject_rel else r.subject }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty"><p>Aún no tienes historial de reservas.</p></div>
+      {% endif %}
+    </article>
+
+    <article class="card section">
+      <div class="card-title">Disponibilidad de laboratorios de hoy</div>
+      <div class="card-subtitle">La fecha se toma automáticamente (día actual). Filtra solo por hora.</div>
+
+      <form method="GET" action="{{ url_for('home.home_dashboard') }}#labs" class="labs-toolbar" id="labs">
+        <div class="labs-filter-controls">
+          <div class="form-readonly-visual">
+            <i class="ph ph-calendar-blank"></i>
+            <span>Hoy: {{ selected_date.strftime('%d/%m/%Y') }}</span>
+          </div>
+          <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+          <label class="labs-filter-input">
+            <i class="ph ph-clock"></i>
+            <select name="time" aria-label="Hora a evaluar">
+              {% set hour_options = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'] %}
+              {% for hour in hour_options %}
+              <option value="{{ hour }}" {% if selected_time == hour %}selected{% endif %}>{{ hour }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button class="btn btn-gold labs-filter-btn" type="submit">Filtrar</button>
+        </div>
+        <span class="badge"><i class="ph ph-clock"></i>Hora evaluada: {{ selected_time }}</span>
+      </form>
+
+      {% for floor_name, cards in labs_by_floor.items() %}
+      <div class="section">
+        <h3>{{ floor_name }}</h3>
+        <div class="labs-grid">
+          {% for item in cards %}
+          {% set res = item.reservation %}
+          <div class="lab-card lab-{{ item.status }}">
+            <div class="lab-head">
+              <strong>{{ item.lab }} - Laboratorio {{ item.lab }}</strong>
+              <span class="chip chip-{% if item.status == 'free' %}APPROVED{% elif item.status == 'busy' %}REJECTED{% else %}PENDING{% endif %}">
+                {% if item.status == 'free' %}Disponible{% elif item.status == 'busy' %}Ocupado{% else %}Pendiente{% endif %}
+              </span>
+            </div>
+            {% if res %}
+            <div class="lab-meta">
+              <div class="lab-slot {% if item.status == 'free' %}slot-available{% elif item.status == 'busy' %}slot-busy{% else %}slot-pending{% endif %}">
+                {% if item.status == 'free' %}Disponible ahora{% elif item.status == 'busy' %}Actualmente ocupado{% else %}Pendiente de confirmación{% endif %}
+              </div>
+              <div><strong>Materia:</strong> {{ res.subject_rel.name if res.subject_rel else res.subject }}</div>
+              <div><strong>Grupo:</strong> {{ res.group_name }}</div>
+              <div><strong>Responsable:</strong> {{ res.user.full_name if res.user and res.user.full_name else (res.user.email if res.user else res.teacher_name) }}</div>
+            </div>
+            {% else %}
+            <div class="lab-meta">
+              <div class="lab-slot {% if item.status == 'free' %}slot-available{% elif item.status == 'busy' %}slot-busy{% else %}slot-pending{% endif %}">
+                {% if item.status == 'free' %}Disponible ahora{% elif item.status == 'busy' %}Actualmente ocupado{% else %}Pendiente de confirmación{% endif %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </article>
+  </div>
+
+  <div>
+    <article class="card section">
+      <div class="card-title">Solicitudes de material</div>
+      <div class="card-subtitle">Solicitudes de material recientes del usuario.</div>
+      {% if recent_material_requests %}
+      <div class="list">
+        {% for request_item in recent_material_requests %}
+        <div class="list-item">
+          <div class="list-head">
+            <strong>Solicitud #{{ request_item.id }}</strong>
+            <span class="chip chip-{{ request_item.status }}">{{ request_item.status|status_label }}</span>
+          </div>
+          <div class="meta">
+            <span><i class="ph ph-calendar"></i> {{ request_item.request_date.strftime('%d/%m/%Y') }}</span>
+            <span><i class="ph ph-clock"></i> {{ request_item.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">
+        <p>No hay solicitudes recientes.</p>
+        <a class="btn btn-ghost" href="{{ url_for('inventory_requests.my_daily_request') }}"><i class="ph ph-clipboard-text"></i>Crear solicitud</a>
+      </div>
+      {% endif %}
+    </article>
+
+    <article class="card section">
+      <div class="card-title">Impresiones 3D</div>
+      <div class="card-subtitle">Solicitudes recientes de impresión 3D.</div>
+      {% if recent_print3d_jobs %}
+      <div class="list">
+        {% for job in recent_print3d_jobs %}
+        <div class="list-item">
+          <div class="list-head">
+            <strong>Solicitud #{{ job.id }}</strong>
+            <span class="chip chip-{{ job.status }}">{{ job.status|status_label }}</span>
+          </div>
+          <div class="meta">
+            <span><i class="ph ph-calendar"></i> {{ job.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% if job.total_estimated is not none %}
+            <span><i class="ph ph-currency-circle-dollar"></i> Total estimado: ${{ '%.2f'|format(job.total_estimated) }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">
+        <p>Aún no tienes solicitudes de impresión 3D.</p>
+        <a class="btn btn-ghost" href="{{ url_for('print3d.my_jobs') }}"><i class="ph ph-cube"></i>Ir a impresiones 3D</a>
+      </div>
+      {% endif %}
+    </article>
+
+    <article class="card section">
+      <div class="card-title">Adeudos activos</div>
+      {% if my_open_debts %}
+      <div class="list">
+        {% for debt in my_open_debts %}
+        <div class="list-item">
+          <div class="list-head">
+            <strong>Adeudo #{{ debt.id }}</strong>
+            <span class="chip chip-{{ debt.status }}">{{ debt.status|status_label }}</span>
+          </div>
+          <div class="meta">
+            <span>{{ debt.reason or 'Sin descripción' }}</span>
+            <span><i class="ph ph-currency-circle-dollar"></i> {{ debt.amount if debt.amount is not none else 'Sin monto' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty"><p>No tienes adeudos activos.</p></div>
+      {% endif %}
+    </article>
+
+    <article class="card section">
+      <div class="card-title">Accesos rápidos personales</div>
+      <div class="quick-actions" style="grid-template-columns:1fr 1fr;">
+        <a class="quick-link" href="{{ url_for('profile.my_profile') }}"><i class="ph ph-user-circle"></i>Mi perfil</a>
+        <a class="quick-link" href="{{ url_for('reservations.my_reservations') }}"><i class="ph ph-calendar-check"></i>Mis reservas</a>
+        <a class="quick-link" href="{{ url_for('reservations.request_reservation') }}"><i class="ph ph-calendar-plus"></i>Nueva reservación</a>
+        <a class="quick-link" href="{{ url_for('inventory_requests.my_daily_request') }}"><i class="ph ph-clipboard-text"></i>Mis solicitudes</a>
+        <a class="quick-link" href="{{ url_for('print3d.my_jobs') }}"><i class="ph ph-cube"></i>Mis impresiones 3D</a>
+        <a class="quick-link" href="{{ url_for('debts.my_debts') }}"><i class="ph ph-warning-circle"></i>Mis adeudos</a>
+        <a class="quick-link" href="{{ url_for('forum.forum_home') }}"><i class="ph ph-chats-circle"></i>Foro</a>
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}

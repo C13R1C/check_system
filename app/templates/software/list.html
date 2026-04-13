@@ -1,0 +1,47 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Software", url_for('software.list_software'))] %}
+{% block title %}Software{% endblock %}
+{% block content %}
+<header class="topbar"><div class="topbar-left"><p class="page-kicker">Software instalado</p><h1>Catálogo de software por salón/laboratorio</h1><p class="page-subtitle">Consulta el software instalado en espacios como B003, B004 y otros salones/labs.</p></div>
+  {% if is_admin_role(current_user.role) %}
+  <div class="topbar-actions">
+    <a class="btn btn-gold" href="{{ url_for('software.admin_new') }}">Registrar software</a>
+  </div>
+  {% endif %}
+</header>
+
+<section class="toolbar-card">
+  <form method="get" action="{{ url_for('software.list_software') }}" class="toolbar">
+    <div class="toolbar-group"><label for="softwareLiveSearch">Búsqueda rápida</label><div class="search-box"><i class="ph ph-magnifying-glass search-icon"></i><input id="softwareLiveSearch" type="text" placeholder="Buscar por salón, nombre, versión o licencia" autocomplete="off"></div></div>
+    <div class="toolbar-group"><label for="lab_id">Filtrar por salón/laboratorio</label><div class="select-wrap"><select id="lab_id" name="lab_id"><option value="">-- Todos los espacios --</option>{% for lab in labs %}<option value="{{ lab.id }}" {% if selected_lab == lab.id %}selected{% endif %}>{{ lab_room_codes.get(lab.id, '—') }}</option>{% endfor %}</select><i class="ph ph-caret-down select-arrow"></i></div></div>
+    <div class="toolbar-actions"><button type="submit" class="btn btn-gold">Aplicar</button><a class="btn btn-ghost" href="{{ url_for('software.list_software') }}">Limpiar</a></div>
+  </form>
+</section>
+
+{% if items|length == 0 %}
+  <section class="empty-state"><i class="ph ph-app-window empty-icon"></i><h3>Sin registros</h3><p>No hay software registrado.</p></section>
+{% else %}
+<section class="table-card"><div class="table-wrap"><table class="inventory-table" style="min-width: 900px;"><thead><tr><th>Salón/Laboratorio</th><th>Nombre</th><th>Versión</th><th>Licencia</th></tr></thead><tbody>
+{% for s in items %}
+<tr class="software-row"><td>{{ lab_room_codes.get(s.lab_id, '—') }}</td><td>{{ s.name }}</td><td>{{ s.version or '-' }}</td><td>{{ s.license_type or '-' }}</td></tr>
+{% endfor %}
+</tbody></table></div></section>
+{% endif %}
+<script>
+(() => {
+  const input = document.getElementById("softwareLiveSearch");
+  const rows = Array.from(document.querySelectorAll(".software-row"));
+  if (!input || !rows.length) return;
+
+  const applyFilter = () => {
+    const query = (input.value || "").trim().toLowerCase();
+    rows.forEach((row) => {
+      const text = (row.textContent || "").toLowerCase();
+      row.style.display = !query || text.includes(query) ? "" : "none";
+    });
+  };
+
+  input.addEventListener("input", applyFilter);
+})();
+</script>
+{% endblock %}

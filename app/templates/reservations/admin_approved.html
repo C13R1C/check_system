@@ -1,0 +1,73 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Reservas admin", url_for('reservations.admin_queue')), ("Reservas en curso", url_for('reservations.admin_approved'))] %}
+{% block title %}Reservas en curso (Administración){% endblock %}
+{% block content %}
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Reservaciones</p>
+    <h1>Reservas en curso de hoy</h1>
+<p class="page-subtitle">Vista operativa de reservas del día. La gestión de materiales se atiende en Solicitudes de material.</p>
+  </div>
+</header>
+
+<section class="toolbar-card">
+  <div class="toolbar-actions">
+    <a class="btn btn-ghost" href="{{ url_for('reservations.admin_queue') }}">
+      Ver reservas pendientes
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('reservations.admin_approved_history') }}">
+      Ver historial
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('inventory_requests.admin_daily_requests') }}">
+      Solicitudes de material
+    </a>
+  </div>
+</section>
+
+<div id="reservations-admin-approved-container">
+  {% if reservations|length == 0 %}
+    <section class="empty-state">
+      <i class="ph ph-calendar-check empty-icon"></i>
+      <h3>Sin reservas en curso</h3>
+      <p>No hay reservas en curso.</p>
+    </section>
+  {% else %}
+  <section class="table-card">
+    <div class="table-wrap">
+      <table class="inventory-table table-mobile-cards" style="min-width: 1100px;">
+        <thead>
+          <tr>
+            <th>Solicitante</th>
+            <th>Usuario</th>
+            <th>Grupo</th>
+            <th>Fecha</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Motivo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reservations %}
+          <tr>
+            <td data-label="Solicitante">{{ (r.user.full_name or '')|trim or r.user.email }}</td>
+            <td data-label="Usuario">{{ r.user.email }}</td>
+            <td data-label="Grupo">{{ r.group_name }}</td>
+            <td data-label="Fecha">{{ r.date }}</td>
+            <td data-label="Inicio">{{ r.start_time }}</td>
+            <td data-label="Fin">{{ r.end_time }}</td>
+            <td data-label="Motivo">{{ r.purpose or '-' }}</td>
+            <td data-label="Estado">
+              <span class="status-badge {% if r.operation_state == 'FINALIZADO' %}status-neutral{% else %}status-ok{% endif %}">
+                {{ 'Finalizado' if r.operation_state == 'FINALIZADO' else 'En progreso' }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

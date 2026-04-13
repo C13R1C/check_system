@@ -1,0 +1,305 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Reservas admin", url_for('reservations.admin_queue'))] %}
+{% block title %}Reservas pendientes (Administración){% endblock %}
+{% block content %}
+<style>
+.reservation-admin-action-form {
+  display: grid;
+  gap: 8px;
+}
+
+.reservation-admin-action-form + .reservation-admin-action-form {
+  margin-top: 8px;
+}
+
+.reservation-admin-action-form .form-control {
+  min-height: 70px;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.reservation-admin-action-form .btn {
+  min-height: 42px;
+  border-radius: 12px;
+  width: auto;
+}
+
+.reservation-admin-action-form .reservation-admin-row-actions{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#reservations-admin-queue-container .inventory-table tbody td{
+  padding: 10px 12px;
+}
+
+#reservations-admin-queue-container .inventory-table tbody tr{
+  vertical-align: top;
+}
+
+#reservations-admin-queue-container .queue-requester{
+  line-height: 1.2;
+  font-size: .9rem;
+}
+
+.signature-modal{position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center}
+.signature-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.72)}
+.signature-modal-content{position:relative;width:min(520px,92vw);border-radius:14px;background:#fff;padding:14px;box-shadow:0 24px 50px rgba(0,0,0,.28)}
+.signature-preview-wrap{display:flex;align-items:center;justify-content:center;min-height:220px;border-radius:10px;background:#fafafa;overflow:auto}
+.signature-preview{width:100%;max-height:72vh;object-fit:contain;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff}
+.signature-empty{display:none;padding:24px;color:var(--text-dim);font-weight:600}
+@media (max-width: 768px){
+  #reservations-admin-queue-container .table-wrap{
+    border:none;
+    background:transparent;
+  }
+}
+</style>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Reservaciones</p>
+    <h1>Reservas pendientes (Administración)</h1>
+    <p class="page-subtitle">Aprueba o rechaza solicitudes pendientes.</p>
+  </div>
+</header>
+
+{% set nombres_dia = {0:'Lunes',1:'Martes',2:'Miércoles',3:'Jueves',4:'Viernes',5:'Sábado',6:'Domingo'} %}
+<div id="reservations-admin-queue-container">
+  <section class="toolbar-card">
+    <div class="toolbar-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reservations.admin_approved') }}">
+        Ver reservas en curso
+      </a>
+    </div>
+  </section>
+
+  {% if reservations|length == 0 %}
+    <section class="empty-state">
+      <i class="ph ph-calendar-check empty-icon"></i>
+      <h3>Sin pendientes</h3>
+      <p>No hay reservas pendientes.</p>
+    </section>
+  {% else %}
+    <section class="table-card">
+      <div class="table-wrap">
+        <table class="inventory-table table-mobile-cards" style="min-width: 1450px;">
+          <thead>
+            <tr>
+              <th>Solicitante</th>
+              <th>Usuario</th>
+              <th>Grupo</th>
+              <th>Fecha</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Motivo</th>
+              <th>Firma</th>
+              <th class="th-actions">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reservations %}
+            <tr>
+              <td data-label="Solicitante" class="queue-requester">{{ (r.user.full_name or '')|trim or r.user.email }}</td>
+              <td data-label="Usuario">{{ r.user.email }}</td>
+              <td data-label="Grupo">{{ r.group_name }}</td>
+              <td data-label="Fecha">{{ r.date }}</td>
+              <td data-label="Inicio">{{ r.start_time }}</td>
+              <td data-label="Fin">{{ r.end_time }}</td>
+              <td data-label="Motivo">{{ r.purpose or '-' }}</td>
+              <td data-label="Firma">
+                {% set sign_url = signature_url_map.get(r.id) if signature_url_map else None %}
+                {% if sign_url %}
+                  <button type="button" class="btn btn-ghost" onclick="openSignatureModal('{{ sign_url }}')">Ver firma</button>
+                {% elif r.signed %}
+                  <span class="status-badge status-warn">Firma no disponible</span>
+                {% else %}
+                  <span class="status-badge status-bad">Sin firma</span>
+                {% endif %}
+              </td>
+              <td data-label="Acciones">
+                <form method="post" class="reservation-admin-action-form">
+                  <label for="admin-note-{{ r.id }}" style="font-size:.86rem; color:var(--text-dim); font-weight:700;">
+                    Nota / motivo de rechazo
+                  </label>
+                  <textarea id="admin-note-{{ r.id }}" name="admin_note" rows="3" placeholder="Ej. Falta evidencia, ajuste de horario, observación de aprobación..." class="form-control"></textarea>
+                  <div class="reservation-admin-row-actions">
+                    <button type="submit" formaction="{{ url_for('reservations.admin_approve', res_id=r.id) }}" class="btn btn-gold">Aprobar</button>
+                    <button type="submit" formaction="{{ url_for('reservations.admin_reject', res_id=r.id) }}" class="btn btn-ghost">Rechazar</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+</div>
+
+<div id="adminCalendarContent">
+  {% include "reservations/_admin_weekly_calendar_content.html" %}
+</div>
+
+<div id="queueSignatureModal" class="signature-modal" style="display:none;" aria-hidden="true">
+  <div class="signature-modal-backdrop" onclick="closeSignatureModal()"></div>
+  <div class="signature-modal-content" role="dialog" aria-modal="true" aria-label="Firma digital">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+      <h3 style="margin:0;">Firma digital</h3>
+      <button type="button" class="btn btn-ghost" onclick="closeSignatureModal()">Cerrar</button>
+    </div>
+    <div class="signature-preview-wrap">
+      <img id="queueSignaturePreview" class="signature-preview" src="" alt="Firma digital">
+      <div id="queueSignatureEmpty" class="signature-empty">Firma no disponible</div>
+    </div>
+  </div>
+</div>
+
+<div id="reservationSlotModal" class="signature-modal" aria-hidden="true" style="display:none;">
+  <div class="signature-modal-backdrop" onclick="closeReservationSlotModal()"></div>
+  <div class="signature-modal-content" role="dialog" aria-modal="true" aria-labelledby="reservationSlotModalTitle" style="max-width:500px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+      <h3 id="reservationSlotModalTitle" style="margin:0;">Detalle de reservación</h3>
+      <button type="button" class="btn btn-ghost" onclick="closeReservationSlotModal()">Cerrar</button>
+    </div>
+    <div class="table-card" style="margin:0;">
+      <p><strong>Solicitante:</strong> <span id="slotRequester">-</span></p>
+      <p><strong>Grupo:</strong> <span id="slotGroup">-</span></p>
+      <p><strong>Materia:</strong> <span id="slotSubject">-</span></p>
+      <p><strong>Estado:</strong> <span id="slotStatus">-</span></p>
+    </div>
+  </div>
+</div>
+
+<script>
+let queueSignatureEscHandler = null;
+
+function openSignatureModal(url) {
+  const modal = document.getElementById("queueSignatureModal");
+  const img = document.getElementById("queueSignaturePreview");
+  const empty = document.getElementById("queueSignatureEmpty");
+  if (!modal || !img || !empty) return;
+  img.style.display = "none";
+  empty.style.display = "none";
+  img.src = "";
+  img.onload = () => {
+    img.style.display = "block";
+    empty.style.display = "none";
+  };
+  img.onerror = () => {
+    img.style.display = "none";
+    empty.style.display = "block";
+  };
+  img.src = url || "";
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  document.body.style.overflow = "hidden";
+
+  queueSignatureEscHandler = (event) => {
+    if (event.key === "Escape") closeSignatureModal();
+  };
+  document.addEventListener("keydown", queueSignatureEscHandler);
+}
+
+function closeSignatureModal() {
+  const modal = document.getElementById("queueSignatureModal");
+  const img = document.getElementById("queueSignaturePreview");
+  const empty = document.getElementById("queueSignatureEmpty");
+  if (!modal || !img || !empty) return;
+  modal.style.display = "none";
+  modal.setAttribute("aria-hidden", "true");
+  img.src = "";
+  img.style.display = "none";
+  empty.style.display = "none";
+  document.body.classList.remove("modal-open");
+  document.body.style.overflow = "";
+  if (queueSignatureEscHandler) {
+    document.removeEventListener("keydown", queueSignatureEscHandler);
+    queueSignatureEscHandler = null;
+  }
+}
+
+function openReservationSlotModal(data) {
+  const modal = document.getElementById('reservationSlotModal');
+  if (!modal) return;
+  document.getElementById('slotRequester').textContent = data?.requester || '-';
+  document.getElementById('slotGroup').textContent = data?.group || '-';
+  document.getElementById('slotSubject').textContent = data?.subject || '-';
+  document.getElementById('slotStatus').textContent = data?.status || '-';
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+
+function closeReservationSlotModal() {
+  const modal = document.getElementById('reservationSlotModal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+function bindAdminCalendarAsyncFilters() {
+  const content = document.getElementById("adminCalendarContent");
+  if (!content) return;
+  const form = content.querySelector("form.reservation-calendar-filter");
+  if (!form) return;
+  const clearBtn = form.querySelector('a.btn.btn-ghost:last-of-type');
+  const buildingSelect = form.querySelector("#buildingSelect");
+  const roomSelect = form.querySelector("#roomSelect");
+
+  const syncRoomOptionsByBuilding = () => {
+    if (!buildingSelect || !roomSelect) return;
+    const building = (buildingSelect.value || "").trim().toUpperCase();
+    Array.from(roomSelect.options).forEach((opt) => {
+      if (!opt.value) {
+        opt.style.display = "block";
+        return;
+      }
+      const visible = !building || opt.value.toUpperCase().startsWith(building);
+      opt.style.display = visible ? "block" : "none";
+      if (!visible && opt.selected) roomSelect.value = "";
+    });
+  };
+
+  const refreshCalendar = async (params) => {
+    const query = new URLSearchParams(params);
+    query.set("calendar_partial", "1");
+    const url = `${form.action}?${query.toString()}`;
+    const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+    if (!resp.ok) return;
+    const html = await resp.text();
+    content.innerHTML = html;
+    bindAdminCalendarAsyncFilters();
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    refreshCalendar(new URLSearchParams(new FormData(form)));
+  });
+
+  clearBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    refreshCalendar(new URLSearchParams());
+  });
+
+  buildingSelect?.addEventListener("change", () => {
+    syncRoomOptionsByBuilding();
+    refreshCalendar(new URLSearchParams(new FormData(form)));
+  });
+
+  roomSelect?.addEventListener("change", () => {
+    refreshCalendar(new URLSearchParams(new FormData(form)));
+  });
+
+  syncRoomOptionsByBuilding();
+
+}
+
+bindAdminCalendarAsyncFilters();
+</script>
+
+{% endblock %}

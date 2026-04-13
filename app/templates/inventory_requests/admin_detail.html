@@ -1,0 +1,266 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Solicitudes de material", url_for('inventory_requests.admin_daily_requests')), ("Solicitud #" ~ ticket.id, url_for('inventory_requests.admin_ticket_detail', ticket_id=ticket.id))] %}
+{% block title %}Solicitud #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<style>
+.inventory-summary-card {
+  border: 1px solid rgba(32, 85, 59, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f4f9f6);
+  box-shadow: 0 14px 28px rgba(20, 44, 32, 0.08);
+}
+
+.inventory-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.inventory-meta-item {
+  border: 1px solid rgba(32, 85, 59, 0.16);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.inventory-meta-label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #4d675a;
+  margin-bottom: 4px;
+}
+
+.inventory-meta-value {
+  color: #1d2a22;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.inventory-text-block {
+  border: 1px solid rgba(32, 85, 59, 0.16);
+  border-radius: 12px;
+  padding: 13px 14px;
+  background: #fff;
+}
+
+.admin-action-card {
+  border: 1px solid rgba(32, 85, 59, 0.18);
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fbf9);
+  display: grid;
+  gap: 10px;
+}
+
+.inventory-summary-card .status-badge,
+.admin-action-card .status-badge {
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.inventory-summary-card .status-badge.status-warn,
+.admin-action-card .status-badge.status-warn {
+  background: #fff4cf;
+  border-color: #efc24e;
+  color: #7f5b00;
+}
+
+.inventory-summary-card .status-badge.status-ok,
+.admin-action-card .status-badge.status-ok {
+  background: #e6f6ee;
+  border-color: #8bc8a7;
+  color: #216746;
+}
+
+.inventory-summary-card .status-badge.status-bad,
+.admin-action-card .status-badge.status-bad {
+  background: #fdeaea;
+  border-color: #e8a4a4;
+  color: #9a2727;
+}
+
+@media (max-width: 900px) {
+  .inventory-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Inventario</p>
+    <h1>Gestionar solicitud de material #{{ ticket.id }}</h1>
+    <p class="page-subtitle">Opera esta solicitud desde un único detalle administrativo.</p>
+  </div>
+</header>
+
+<section class="toolbar-card">
+  <div class="toolbar-actions">
+    <a href="{{ url_for('inventory_requests.admin_daily_requests') }}" class="btn btn-ghost">Volver al listado</a>
+  </div>
+</section>
+
+<section class="table-card inventory-summary-card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Resumen de la solicitud</h3>
+  {% set closed_with_debt = ticket.status == 'CLOSED' and ticket.notes and '[CERRADO_CON_ADEUDO]' in ticket.notes %}
+  {% set rejected = ticket.status == 'CLOSED' and ticket.notes and '[RECHAZADA]' in ticket.notes %}
+
+  <div class="inventory-summary-grid" style="margin-top:10px;">
+    <article class="inventory-meta-item">
+      <span class="inventory-meta-label">Estado</span>
+      <span class="inventory-meta-value">
+        <span class="status-badge {% if ticket.status == 'OPEN' %}status-warn{% elif ticket.status == 'READY' %}status-ok{% elif closed_with_debt or rejected %}status-bad{% else %}status-neutral{% endif %}">{{ 'Rechazada' if rejected else ('Cerrado con adeudo' if closed_with_debt else ticket.status|status_label) }}</span>
+      </span>
+    </article>
+
+    <article class="inventory-meta-item">
+      <span class="inventory-meta-label">Usuario</span>
+      <span class="inventory-meta-value">{{ ticket.user.email if ticket.user else '-' }}</span>
+    </article>
+
+    <article class="inventory-meta-item">
+      <span class="inventory-meta-label">Fecha solicitud</span>
+      <span class="inventory-meta-value">{{ ticket.request_date }}</span>
+    </article>
+
+    <article class="inventory-meta-item">
+      <span class="inventory-meta-label">Items</span>
+      <span class="inventory-meta-value">{{ ticket.items|length }}</span>
+    </article>
+  </div>
+
+  <div style="display:grid; gap:10px; margin-top:12px;">
+    <article class="inventory-text-block">
+      <span class="inventory-meta-label">Motivo</span>
+      <div class="inventory-meta-value">{{ ticket_base_reason or '-' }}</div>
+    </article>
+    <article class="inventory-text-block">
+      <span class="inventory-meta-label">Nota de entrega parcial</span>
+      <div class="inventory-meta-value">{{ partial_delivery_note or 'Sin nota administrativa registrada.' }}</div>
+    </article>
+    <article class="inventory-text-block">
+      <span class="inventory-meta-label">Motivo de rechazo</span>
+      <div class="inventory-meta-value">{{ rejected_reason or 'Solicitud no rechazada.' }}</div>
+    </article>
+  </div>
+</section>
+
+<section class="table-card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Materiales solicitados</h3>
+  <div class="table-wrap">
+    <table class="inventory-table" style="min-width:780px;">
+      <thead>
+        <tr>
+          <th>Material</th>
+          <th>Cantidad solicitada</th>
+          <th>Cantidad entregada</th>
+          <th>Cantidad devuelta</th>
+          <th>Faltante</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in ticket.items %}
+        <tr>
+          <td>{{ item.material.name if item.material else ('ID ' ~ item.material_id) }}</td>
+          <td>{{ item.quantity_requested }}</td>
+          <td>{{ item.quantity_delivered }}</td>
+          <td>{{ item.quantity_returned }}</td>
+          <td>{{ [0, (item.quantity_delivered or 0) - (item.quantity_returned or 0)]|max }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Acciones administrativas</h3>
+
+  {% if ticket.status == 'OPEN' %}
+  <div class="admin-action-card">
+    <h4 style="margin:0;">Entrega de material</h4>
+    <form method="post" action="{{ url_for('inventory_requests.admin_mark_ready', ticket_id=ticket.id) }}" style="display:grid; gap:10px;">
+      <div class="table-wrap">
+        <table class="inventory-table" style="min-width:780px;">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Solicitado</th>
+              <th>Entregar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in ticket.items %}
+            <tr>
+              <td>{{ item.material.name if item.material else ('ID ' ~ item.material_id) }}</td>
+              <td>{{ item.quantity_requested }}</td>
+              <td>
+                <input type="number" min="0" max="{{ item.quantity_requested }}" name="delivered_{{ item.id }}" value="{{ item.quantity_delivered if item.quantity_delivered is not none and item.quantity_delivered > 0 else item.quantity_requested }}" class="form-control" style="max-width:140px;">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="toolbar-group">
+        <label for="partial_delivery_note">Nota administrativa (obligatoria si la entrega es parcial)</label>
+        <textarea id="partial_delivery_note" name="partial_delivery_note" rows="2" class="form-control" placeholder="Ejemplo: Se entregaron menos piezas por disponibilidad."></textarea>
+      </div>
+      <div class="toolbar-actions" style="justify-content:flex-end;">
+        <button type="submit" class="btn btn-gold">Entregar material y marcar listo para recoger</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="admin-action-card" style="margin-top:12px;">
+    <h4 style="margin:0;">Rechazo de solicitud</h4>
+    <form method="post" action="{{ url_for('inventory_requests.admin_reject_ticket', ticket_id=ticket.id) }}" style="display:grid; gap:8px;">
+      <textarea name="reject_reason" rows="2" class="form-control" placeholder="Motivo de rechazo (obligatorio)" required></textarea>
+      <div class="toolbar-actions" style="justify-content:flex-end;">
+        <button type="submit" class="btn btn-ghost">Rechazar solicitud</button>
+      </div>
+    </form>
+  </div>
+  {% elif ticket.status == 'READY' %}
+  <div class="admin-action-card">
+    <h4 style="margin:0;">Registrar devolución y cierre</h4>
+    <form method="post" action="{{ url_for('inventory_requests.admin_register_return', ticket_id=ticket.id) }}" style="display:grid; gap:10px;">
+      <div class="table-wrap">
+        <table class="inventory-table" style="min-width:780px;">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Entregado</th>
+              <th>Devuelto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in ticket.items %}
+            <tr>
+              <td>{{ item.material.name if item.material else ('ID ' ~ item.material_id) }}</td>
+              <td>{{ item.quantity_delivered }}</td>
+              <td>
+                <input type="number" min="0" max="{{ item.quantity_delivered }}" name="returned_{{ item.id }}" value="{{ item.quantity_returned }}" class="form-control" style="max-width:140px;">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="toolbar-group">
+        <label for="cancel_reason">Motivo de cierre/cancelación</label>
+        <textarea id="cancel_reason" name="cancel_reason" rows="2" class="form-control" placeholder="Motivo obligatorio" required></textarea>
+      </div>
+      <div class="toolbar-actions" style="justify-content:flex-end;">
+        <button type="submit" class="btn btn-gold">Guardar devolución (Cerrar)</button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <p class="page-subtitle" style="margin:0;">Solicitud cerrada. No hay acciones administrativas pendientes.</p>
+  {% endif %}
+</section>
+{% endblock %}

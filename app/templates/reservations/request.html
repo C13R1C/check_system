@@ -1,0 +1,897 @@
+{% extends "layouts/student_base.html" %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Mis reservas", url_for('reservations.my_reservations')), ("Solicitar", url_for('reservations.request_reservation'))] %}
+{% block title %}Solicitar reserva{% endblock %}
+
+{% block content %}
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="page-kicker">Reservaciones</p>
+    <h1>Solicitar reserva</h1>
+    <p class="page-subtitle">Completa todos los datos para enviar tu solicitud. Debajo puedes consultar la ocupación semanal de los laboratorios.</p>
+  </div>
+  {% if current_user.role in ["ADMIN", "SUPERADMIN"] %}
+  <div class="topbar-actions">
+    <a class="btn btn-gold" href="{{ url_for('reservations.admin_queue') }}">Administrar solicitudes</a>
+  </div>
+  {% endif %}
+</header>
+
+<style>
+.datetime-helper {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--text-dim, #728078);
+}
+
+.calendar-toggle {
+  margin: 20px 0 24px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(55, 71, 79, 0.28);
+  background: linear-gradient(135deg, rgba(55, 71, 79, 0.12), rgba(96, 125, 139, 0.16));
+  color: #263238;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 10px 22px rgba(55, 71, 79, 0.15);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.calendar-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(55, 71, 79, 0.4);
+  box-shadow: 0 14px 30px rgba(55, 71, 79, 0.2);
+}
+
+.calendar-toggle-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-toggle-main i {
+  font-size: 1.1rem;
+}
+
+.calendar-toggle-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(55, 71, 79, 0.12);
+  transition: transform .2s ease, background .2s ease;
+}
+
+.calendar-toggle[aria-expanded="true"] .calendar-toggle-caret {
+  transform: rotate(180deg);
+  background: rgba(55, 71, 79, 0.2);
+}
+
+#calendarContainer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.32s ease, opacity 0.25s ease;
+}
+
+#calendarContainer.open {
+  max-height: var(--calendar-max-height, 0px);
+  opacity: 1;
+  overflow: visible;
+}
+
+.time-range-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.signature-container {
+  border: 1px solid var(--stroke, rgba(44, 54, 61, .18));
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 248, 249, 0.94));
+}
+
+.canvas-wrapper {
+  position: relative;
+  border: 1px dashed var(--stroke-strong, rgba(0,0,0,0.2));
+  border-radius: 12px;
+  min-height: 200px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#signaturePad {
+  width: 100%;
+  height: 200px;
+  display: block;
+  touch-action: none;
+}
+
+.signature-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim, #728078);
+  font-size: .92rem;
+  pointer-events: none;
+}
+
+.signature-guide-line {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 44px;
+  border-bottom: 1px solid rgba(99, 114, 122, .45);
+  pointer-events: none;
+}
+
+.signature-preview-panel {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(44, 54, 61, .16);
+  background: rgba(255, 255, 255, .92);
+}
+
+.signature-preview {
+  display: none;
+  width: 100%;
+  max-height: 190px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid rgba(44, 54, 61, .2);
+  background: #fff;
+}
+
+.signature-hint {
+  margin-top: 8px;
+  font-size: .82rem;
+  color: var(--text-dim, #728078);
+}
+
+@media (max-width: 900px) {
+  .reservation-request-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reservation-calendar-filter {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .reservation-calendar-filter .toolbar-group,
+  .reservation-calendar-filter .btn {
+    width: 100%;
+  }
+
+  .time-range-row {
+    grid-template-columns: 1fr;
+  }
+  #reservationFormSection .toolbar-actions .btn{
+    width: 100%;
+  }
+  #signaturePad{
+    height: 165px;
+  }
+  .calendar-toggle{
+    padding: 12px 14px;
+  }
+}
+</style>
+
+<div class="calendar-toggle" onclick="toggleCalendar()" role="button" tabindex="0" aria-expanded="false" aria-controls="calendarContainer">
+  <span class="calendar-toggle-main">
+    <i class="ph ph-calendar-blank"></i>
+    <span>Ver ocupación semanal de laboratorios</span>
+  </span>
+  <span class="calendar-toggle-caret" aria-hidden="true"><i class="ph ph-caret-down"></i></span>
+</div>
+<div id="calendarContainer" class="collapsed">
+  <div id="calendarContent">
+    {% include "reservations/_weekly_calendar_content.html" %}
+  </div>
+</div>
+
+<section class="toolbar-card" id="reservationFormSection">
+  <form method="post" class="toolbar reservation-request-form" style="grid-template-columns: repeat(2, minmax(280px, 1fr));" data-form-mode="create">
+    <div class="toolbar-group">
+      <label>Laboratorio</label>
+      <div class="select-wrap">
+        <select name="room" required>
+          <option value="">-- Selecciona --</option>
+          {% for r in rooms %}
+          <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
+        <i class="ph ph-caret-down select-arrow"></i>
+      </div>
+    </div>
+
+    <div class="toolbar-group" id="subjectField">
+      <label>Materia</label>
+      {% if is_professor %}
+        {% if professor_subjects %}
+          <div class="select-wrap">
+            <select name="subject" id="subjectSelect" required style="text-transform: uppercase;">
+              <option value="">Selecciona una materia</option>
+              {% for professor_subject in professor_subjects %}
+              <option value="{{ professor_subject }}">{{ professor_subject }}</option>
+              {% endfor %}
+            </select>
+            <i class="ph ph-caret-down select-arrow"></i>
+          </div>
+        {% else %}
+          <div class="search-box">
+            <i class="ph ph-warning-circle search-icon"></i>
+            <input type="text" value="No tienes materias asignadas" readonly>
+          </div>
+          <small style="display:block; margin-top:6px; opacity:.8;">
+            Completa/actualiza tus materias para poder reservar como profesor.
+          </small>
+        {% endif %}
+      {% else %}
+        <div class="search-box">
+          <i class="ph ph-book search-icon"></i>
+          <input type="text" name="subject" placeholder="Ejemplo: Programación Web" required style="text-transform: uppercase;">
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="toolbar-group" id="groupField">
+      <label>Grupo</label>
+      {% if is_professor %}
+        {% if professor_subjects %}
+          <div class="select-wrap">
+            <select name="group_name" id="groupSelect" required style="text-transform: uppercase;">
+              <option value="">Selecciona un grupo</option>
+            </select>
+            <i class="ph ph-caret-down select-arrow"></i>
+          </div>
+        {% else %}
+          <div class="search-box">
+            <i class="ph ph-warning-circle search-icon"></i>
+            <input type="text" value="No tienes grupos asignados" readonly>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="search-box">
+          <i class="ph ph-users search-icon"></i>
+          <input type="text" value="{{ student_group_name }}" readonly>
+        </div>
+        <input type="hidden" name="group_name" value="{{ student_group_name|upper }}">
+      {% endif %}
+    </div>
+
+    <div class="toolbar-group">
+      <label>Solicitante</label>
+      <div class="search-box">
+        <i class="ph ph-user search-icon"></i>
+        <input
+          type="text"
+          value="{{ (current_user.full_name or '')|trim or current_user.email }}"
+          readonly
+        >
+      </div>
+    </div>
+
+    <div class="toolbar-group">
+      <label>Fecha de uso</label>
+      <div class="search-box">
+        <i class="ph ph-calendar search-icon"></i>
+        <input type="date" id="reservationDateInput" name="date" value="{{ today.isoformat() }}" min="{{ today.isoformat() }}" required aria-describedby="reservationDateHelp">
+      </div>
+      <small id="reservationDateHelp" class="datetime-helper">Selecciona la fecha en formato local del navegador.</small>
+    </div>
+
+    <div class="toolbar-group time-range-row">
+      <div>
+        <label>Hora de inicio</label>
+        <div class="search-box time-picker-input-wrap">
+          <i class="ph ph-clock search-icon"></i>
+          <input type="time" id="startTimeInput" name="start_time" required min="08:00" max="21:00" step="1800" aria-describedby="reservationTimeHelp" class="clock-time-input">
+          <button type="button" class="time-picker-open-btn" data-target="startTimeInput" aria-label="Abrir selector radial de hora de inicio">
+            <i class="ph ph-clock-afternoon"></i>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label>Hora de finalización</label>
+        <div class="search-box time-picker-input-wrap">
+          <i class="ph ph-clock-countdown search-icon"></i>
+          <input type="time" id="endTimeInput" name="end_time" required min="08:00" max="21:00" step="1800" aria-describedby="reservationTimeHelp" class="clock-time-input">
+          <button type="button" class="time-picker-open-btn" data-target="endTimeInput" aria-label="Abrir selector radial de hora de finalización">
+            <i class="ph ph-clock-afternoon"></i>
+          </button>
+        </div>
+      </div>
+      <small id="reservationTimeHelp" class="datetime-helper">Rango sugerido: 08:00 a 21:00 (formato 24 horas).</small>
+    </div>
+
+    <div class="toolbar-group" style="grid-column:1/-1;">
+      <label>Motivo (opcional)</label>
+      <textarea class="form-control" name="purpose" rows="3" placeholder="Objetivo de la práctica o actividad"></textarea>
+    </div>
+
+    <div class="toolbar-group" style="grid-column:1/-1;">
+      <label>Firma digital del solicitante</label>
+      <div class="signature-container">
+        <div class="canvas-wrapper">
+          <canvas id="signaturePad"></canvas>
+          <div id="signaturePlaceholder" class="signature-placeholder">Firme aquí</div>
+          <div class="signature-guide-line"></div>
+        </div>
+        <input type="hidden" id="signatureDataInput" name="signature_data">
+        <div class="toolbar-actions" style="margin-top:10px;">
+          <button type="button" id="clearSignatureBtn" class="btn btn-ghost">Borrar</button>
+          <button type="button" id="saveSignatureBtn" class="btn btn-gold">Guardar firma</button>
+        </div>
+        <div class="signature-preview-panel">
+          <img id="signaturePreview" class="signature-preview" alt="Vista previa de firma digital">
+        </div>
+        <small class="signature-hint">Debes capturar y guardar tu firma antes de enviar la reservación.</small>
+      </div>
+    </div>
+
+    <div class="toolbar-actions" style="grid-column:1/-1;">
+      <button type="submit" id="submitReservationBtn" class="btn btn-gold" {% if is_professor and not professor_subjects %}disabled title="No tienes materias asignadas"{% endif %}>Enviar solicitud</button>
+      <a href="{{ url_for('reservations.my_reservations') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<div id="clockPickerModal" class="clock-picker-modal" aria-hidden="true">
+  <div class="clock-picker-backdrop" data-clock-close="1"></div>
+  <div class="clock-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="clockPickerTitle">
+    <div class="clock-picker-header">
+      <p class="page-kicker">Selector de hora</p>
+      <h3 id="clockPickerTitle">Selecciona una hora</h3>
+      <div class="clock-picker-current" id="clockPickerCurrent">12:00 AM</div>
+    </div>
+    <div class="clock-picker-face-wrap">
+      <div class="clock-picker-face" id="clockPickerFace">
+        <div class="clock-picker-hand" id="clockPickerHand"></div>
+        <div class="clock-picker-center-dot"></div>
+      </div>
+    </div>
+    <div class="clock-picker-period">
+      <button type="button" class="clock-period-btn is-active" id="clockPeriodAM" data-period="AM">AM</button>
+      <button type="button" class="clock-period-btn" id="clockPeriodPM" data-period="PM">PM</button>
+    </div>
+    <small class="datetime-helper" id="clockPickerHelp">Rango permitido del campo: 08:00 a 21:00.</small>
+    <div class="clock-picker-actions">
+      <button type="button" class="btn btn-ghost" id="clockCancelBtn">Cancelar</button>
+      <button type="button" class="btn btn-gold" id="clockConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const professorGroupsBySubject = {{ professor_groups_by_subject | tojson if is_professor else "{}" }};
+const subjectSelect = document.getElementById("subjectSelect");
+const groupSelect = document.getElementById("groupSelect");
+const reservationDateInput = document.getElementById("reservationDateInput");
+const startTimeInput = document.getElementById("startTimeInput");
+const endTimeInput = document.getElementById("endTimeInput");
+const reservationForm = document.querySelector(".reservation-request-form");
+const signaturePad = document.getElementById("signaturePad");
+const signatureDataInput = document.getElementById("signatureDataInput");
+const clearSignatureBtn = document.getElementById("clearSignatureBtn");
+const saveSignatureBtn = document.getElementById("saveSignatureBtn");
+const signaturePreview = document.getElementById("signaturePreview");
+const signaturePlaceholder = document.getElementById("signaturePlaceholder");
+const submitReservationBtn = document.getElementById("submitReservationBtn");
+
+const clockPickerModal = document.getElementById("clockPickerModal");
+const clockPickerFace = document.getElementById("clockPickerFace");
+const clockPickerHand = document.getElementById("clockPickerHand");
+const clockPickerCurrent = document.getElementById("clockPickerCurrent");
+const clockPickerHelp = document.getElementById("clockPickerHelp");
+const clockConfirmBtn = document.getElementById("clockConfirmBtn");
+const clockCancelBtn = document.getElementById("clockCancelBtn");
+const clockPeriodButtons = document.querySelectorAll(".clock-period-btn");
+let clockPickerTargetInput = null;
+let clockPickerStepIndex = 0; // 0..23 (cada paso = 30 minutos)
+let clockPickerPeriod = "AM";
+let clockPointerActive = false;
+let lastSnappedStep = 0;
+let signatureDrawing = false;
+let signatureHasStroke = false;
+let signatureSaved = false;
+let signatureCtx = null;
+
+function getCoordinates(event) {
+  const rect = signaturePad.getBoundingClientRect();
+  const source = event.touches ? event.touches[0] : event;
+  return { x: source.clientX - rect.left, y: source.clientY - rect.top };
+}
+
+function toggleSignaturePlaceholder() {
+  if (!signaturePlaceholder) return;
+  signaturePlaceholder.style.display = signatureHasStroke ? "none" : "flex";
+}
+
+function resizeCanvas() {
+  if (!signaturePad || !signatureCtx) return;
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const width = signaturePad.clientWidth || 1;
+  const height = signaturePad.clientHeight || 1;
+  signaturePad.width = Math.floor(width * ratio);
+  signaturePad.height = Math.floor(height * ratio);
+  signatureCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  signatureCtx.lineWidth = 2.2;
+  signatureCtx.lineCap = "round";
+  signatureCtx.lineJoin = "round";
+  signatureCtx.strokeStyle = "#2c2c2c";
+  signatureHasStroke = false;
+  signatureSaved = false;
+  signatureDataInput.value = "";
+  if (signaturePreview) {
+    signaturePreview.style.display = "none";
+    signaturePreview.removeAttribute("src");
+  }
+  toggleSignaturePlaceholder();
+}
+
+function startDrawing(event) {
+  event.preventDefault();
+  signatureDrawing = true;
+  const { x, y } = getCoordinates(event);
+  signatureCtx.beginPath();
+  signatureCtx.moveTo(x, y);
+}
+
+function draw(event) {
+  if (!signatureDrawing) return;
+  event.preventDefault();
+  const { x, y } = getCoordinates(event);
+  signatureCtx.lineTo(x, y);
+  signatureCtx.stroke();
+  signatureHasStroke = true;
+  signatureSaved = false;
+  signatureDataInput.value = "";
+  if (signaturePreview) {
+    signaturePreview.style.display = "none";
+    signaturePreview.removeAttribute("src");
+  }
+  toggleSignaturePlaceholder();
+}
+
+function stopDrawing() {
+  signatureDrawing = false;
+}
+
+function initSignaturePad() {
+  if (!signaturePad) return;
+  signatureCtx = signaturePad.getContext("2d");
+  resizeCanvas();
+
+  signaturePad.addEventListener("mousedown", startDrawing);
+  signaturePad.addEventListener("mousemove", draw);
+  window.addEventListener("mouseup", stopDrawing);
+  signaturePad.addEventListener("mouseleave", stopDrawing);
+
+  signaturePad.addEventListener("touchstart", startDrawing, { passive: false });
+  signaturePad.addEventListener("touchmove", draw, { passive: false });
+  signaturePad.addEventListener("touchend", stopDrawing, { passive: true });
+  signaturePad.addEventListener("touchcancel", stopDrawing, { passive: true });
+
+  window.addEventListener("resize", resizeCanvas);
+
+  clearSignatureBtn?.addEventListener("click", () => {
+    signatureCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+    signatureHasStroke = false;
+    signatureSaved = false;
+    signatureDataInput.value = "";
+    if (signaturePreview) {
+      signaturePreview.style.display = "none";
+      signaturePreview.removeAttribute("src");
+    }
+    toggleSignaturePlaceholder();
+  });
+
+  saveSignatureBtn?.addEventListener("click", () => {
+    if (!signatureHasStroke) {
+      alert("Primero debes dibujar tu firma.");
+      return;
+    }
+    const dataUrl = signaturePad.toDataURL("image/png");
+    signatureDataInput.value = dataUrl;
+    signatureSaved = true;
+    if (signaturePreview) {
+      signaturePreview.src = dataUrl;
+      signaturePreview.style.display = "block";
+    }
+  });
+}
+
+function toggleCalendar(){
+  const el = document.getElementById("calendarContainer");
+  const toggle = document.querySelector(".calendar-toggle");
+  if (!el) return;
+  const shouldOpen = !el.classList.contains("open");
+  if (shouldOpen) {
+    el.style.setProperty("--calendar-max-height", `${el.scrollHeight + 120}px`);
+  }
+  el.classList.toggle("open", shouldOpen);
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  }
+}
+
+function bindCalendarAsyncFilters() {
+  const content = document.getElementById("calendarContent");
+  if (!content) return;
+  const form = content.querySelector("form.reservation-calendar-filter");
+  if (!form) return;
+
+  const buildingSelect = form.querySelector("#buildingSelect");
+  const roomSelect = form.querySelector("#roomSelect");
+  const clearBtn = form.querySelector('a.btn.btn-ghost:last-of-type');
+  const container = document.getElementById("calendarContainer");
+
+  const syncRoomOptionsByBuilding = () => {
+    if (!buildingSelect || !roomSelect) return;
+    const building = (buildingSelect.value || "").trim().toUpperCase();
+    Array.from(roomSelect.options).forEach((opt) => {
+      if (!opt.value) {
+        opt.style.display = "block";
+        return;
+      }
+      const visible = !building || opt.value.toUpperCase().startsWith(building);
+      opt.style.display = visible ? "block" : "none";
+      if (!visible && opt.selected) {
+        roomSelect.value = "";
+      }
+    });
+  };
+
+  buildingSelect?.addEventListener("change", syncRoomOptionsByBuilding);
+  syncRoomOptionsByBuilding();
+
+  const refreshCalendar = async (params) => {
+    const query = new URLSearchParams(params);
+    query.set("calendar_partial", "1");
+    const url = `${form.action}?${query.toString()}`;
+    const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+    if (!resp.ok) return;
+    const html = await resp.text();
+    content.innerHTML = html;
+    bindCalendarAsyncFilters();
+    if (container) {
+      container.classList.add("open");
+      container.style.setProperty("--calendar-max-height", `${container.scrollHeight + 120}px`);
+    }
+  };
+
+  form.addEventListener("submit", (evt) => {
+    evt.preventDefault();
+    const params = new URLSearchParams(new FormData(form));
+    refreshCalendar(params);
+  });
+
+  clearBtn?.addEventListener("click", (evt) => {
+    evt.preventDefault();
+    refreshCalendar(new URLSearchParams());
+  });
+
+  [buildingSelect, roomSelect, form.querySelector('input[name="calendar_day"]')].forEach((field) => {
+    field?.addEventListener("change", () => {
+      const params = new URLSearchParams(new FormData(form));
+      refreshCalendar(params);
+    });
+  });
+}
+
+function validateAndSerializeSignature() {
+  if (!signaturePad || !signatureDataInput) return true;
+  if (!signatureHasStroke || !signatureSaved || !signatureDataInput.value) return false;
+  return true;
+}
+
+function toClockStep(hour24, minute) {
+  const normalizedMinute = minute >= 30 ? 30 : 0;
+  const hour12 = (hour24 % 12) || 12;
+  let step = hour12 === 12 ? 0 : hour12 * 2;
+  if (normalizedMinute === 30) step += 1;
+  return step;
+}
+
+function stepToHourMinute(step) {
+  const safeStep = ((step % 24) + 24) % 24;
+  const baseHour = Math.floor(safeStep / 2);
+  const hour12 = baseHour === 0 ? 12 : baseHour;
+  const minute = safeStep % 2 === 0 ? 0 : 30;
+  return { hour12, minute };
+}
+
+function to24Hour(hour12, period) {
+  if (period === "AM") return hour12 === 12 ? 0 : hour12;
+  return hour12 === 12 ? 12 : hour12 + 12;
+}
+
+function hhmmFromClock(step, period) {
+  const { hour12, minute } = stepToHourMinute(step);
+  const hour24 = to24Hour(hour12, period);
+  return `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function labelFromClock(step, period) {
+  const { hour12, minute } = stepToHourMinute(step);
+  return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+function updateClockPeriodButtons() {
+  clockPeriodButtons.forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.period === clockPickerPeriod);
+  });
+}
+
+function updateClockSelectionUI() {
+  const angle = (clockPickerStepIndex * 15) - 90;
+  clockPickerHand.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+  clockPickerCurrent.textContent = labelFromClock(clockPickerStepIndex, clockPickerPeriod);
+
+  if (!clockPickerTargetInput) return;
+  const candidate = hhmmFromClock(clockPickerStepIndex, clockPickerPeriod);
+  const minValue = clockPickerTargetInput.min || "00:00";
+  const maxValue = clockPickerTargetInput.max || "23:59";
+  const valid = candidate >= minValue && candidate <= maxValue;
+  clockConfirmBtn.disabled = !valid;
+  clockPickerHelp.textContent = valid
+    ? `Seleccionado: ${candidate} (24h).`
+    : `Fuera de rango para este campo (${minValue} a ${maxValue}).`;
+}
+
+function extractClockFromInputValue(value) {
+  if (!value || !value.includes(":")) return { step: 16, period: "AM" }; // 08:00 por defecto
+  const [hRaw, mRaw] = value.split(":");
+  const hour24 = Number(hRaw);
+  const minuteRaw = Number(mRaw);
+  if (Number.isNaN(hour24) || Number.isNaN(minuteRaw)) return { step: 16, period: "AM" };
+  const minute = minuteRaw >= 30 ? 30 : 0;
+  return {
+    step: toClockStep(hour24, minute),
+    period: hour24 >= 12 ? "PM" : "AM",
+  };
+}
+
+function openClockPickerForInput(inputEl) {
+  if (!inputEl || !clockPickerModal) return;
+  clockPickerTargetInput = inputEl;
+  const initial = extractClockFromInputValue(inputEl.value);
+  clockPickerStepIndex = initial.step;
+  lastSnappedStep = initial.step;
+  clockPickerPeriod = initial.period;
+  updateClockPeriodButtons();
+  updateClockSelectionUI();
+  clockPickerModal.classList.add("is-open");
+  clockPickerModal.setAttribute("aria-hidden", "false");
+}
+
+function closeClockPicker() {
+  if (!clockPickerModal) return;
+  clockPickerModal.classList.remove("is-open");
+  clockPickerModal.setAttribute("aria-hidden", "true");
+  clockPointerActive = false;
+}
+
+function clockStepFromPointer(clientX, clientY) {
+  const rect = clockPickerFace.getBoundingClientRect();
+  const cx = rect.left + (rect.width / 2);
+  const cy = rect.top + (rect.height / 2);
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  const angle = Math.atan2(dy, dx);
+  return (angle * 180 / Math.PI + 450) % 360; // 0° arriba
+}
+
+function angularDistance(a, b) {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
+function snapStepFromDegrees(degrees, previousStep = null, forceNearest = false) {
+  const nearest = Math.round(degrees / 15) % 24;
+  if (forceNearest || previousStep === null || previousStep === undefined) return nearest;
+
+  const previousCenter = (previousStep % 24) * 15;
+  const distToPrevious = angularDistance(degrees, previousCenter);
+  // Pequeña histéresis para evitar rebotes al borde entre dos pasos.
+  if (distToPrevious <= 6) return previousStep % 24;
+  return nearest;
+}
+
+function onClockPointerMove(event) {
+  if (!clockPointerActive) return;
+  event.preventDefault();
+  const point = event.touches?.[0] || event;
+  const degrees = clockStepFromPointer(point.clientX, point.clientY);
+  const snapped = snapStepFromDegrees(degrees, lastSnappedStep, false);
+  clockPickerStepIndex = snapped;
+  lastSnappedStep = snapped;
+  updateClockSelectionUI();
+}
+
+function syncTimeRangeHints() {
+  if (!startTimeInput || !endTimeInput) return;
+
+  const start = startTimeInput.value || "";
+  endTimeInput.min = start || "08:00";
+
+  if (!start || !endTimeInput.value) return;
+  if (endTimeInput.value > start) return;
+
+  const [h, m] = start.split(":").map(Number);
+  const startMinutes = (h * 60) + m;
+  const suggested = Math.min(startMinutes + 60, 21 * 60);
+  const hh = String(Math.floor(suggested / 60)).padStart(2, "0");
+  const mm = String(suggested % 60).padStart(2, "0");
+  endTimeInput.value = `${hh}:${mm}`;
+}
+
+if (startTimeInput && endTimeInput) {
+  startTimeInput.addEventListener("input", syncTimeRangeHints);
+  endTimeInput.addEventListener("focus", syncTimeRangeHints);
+  startTimeInput.addEventListener("click", (event) => {
+    event.preventDefault();
+    openClockPickerForInput(startTimeInput);
+  });
+  endTimeInput.addEventListener("click", (event) => {
+    event.preventDefault();
+    openClockPickerForInput(endTimeInput);
+  });
+  startTimeInput.addEventListener("focus", () => openClockPickerForInput(startTimeInput));
+  endTimeInput.addEventListener("focus", () => openClockPickerForInput(endTimeInput));
+  document.querySelectorAll(".time-picker-open-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-target");
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      openClockPickerForInput(input);
+    });
+  });
+
+  if (clockPickerFace) {
+    for (let step = 0; step < 24; step++) {
+      const marker = document.createElement("button");
+      marker.type = "button";
+      marker.className = `clock-marker ${step % 2 === 0 ? "is-hour" : "is-half"}`;
+      marker.dataset.step = String(step);
+      const angle = (step * 15) - 90;
+      marker.style.setProperty("--angle", `${angle}deg`);
+
+      if (step % 2 === 0) {
+        const { hour12 } = stepToHourMinute(step);
+        marker.textContent = String(hour12);
+      } else {
+        marker.innerHTML = '<span class="half-dot"></span>';
+      }
+
+      marker.addEventListener("click", () => {
+        clockPickerStepIndex = step;
+        lastSnappedStep = step;
+        updateClockSelectionUI();
+      });
+      marker.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+      clockPickerFace.appendChild(marker);
+    }
+
+    clockPickerFace.addEventListener("pointerdown", (event) => {
+      clockPointerActive = true;
+      const degrees = clockStepFromPointer(event.clientX, event.clientY);
+      const snapped = snapStepFromDegrees(degrees, lastSnappedStep, true);
+      clockPickerStepIndex = snapped;
+      lastSnappedStep = snapped;
+      updateClockSelectionUI();
+      if (typeof clockPickerFace.setPointerCapture === "function") {
+        try { clockPickerFace.setPointerCapture(event.pointerId); } catch (_) {}
+      }
+      event.preventDefault();
+    });
+    clockPickerFace.addEventListener("pointermove", onClockPointerMove);
+    const releasePointer = (event) => {
+      clockPointerActive = false;
+      if (typeof clockPickerFace.releasePointerCapture === "function") {
+        try { clockPickerFace.releasePointerCapture(event.pointerId); } catch (_) {}
+      }
+    };
+    clockPickerFace.addEventListener("pointerup", releasePointer);
+    clockPickerFace.addEventListener("pointercancel", releasePointer);
+  }
+
+  clockPeriodButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      clockPickerPeriod = btn.dataset.period || "AM";
+      updateClockPeriodButtons();
+      updateClockSelectionUI();
+    });
+  });
+
+  if (clockCancelBtn) {
+    clockCancelBtn.addEventListener("click", closeClockPicker);
+  }
+  if (clockConfirmBtn) {
+    clockConfirmBtn.addEventListener("click", () => {
+      if (!clockPickerTargetInput) return closeClockPicker();
+      const nextValue = hhmmFromClock(clockPickerStepIndex, clockPickerPeriod);
+      clockPickerTargetInput.value = nextValue;
+      clockPickerTargetInput.dispatchEvent(new Event("input", { bubbles: true }));
+      clockPickerTargetInput.dispatchEvent(new Event("change", { bubbles: true }));
+      closeClockPicker();
+    });
+  }
+  if (clockPickerModal) {
+    clockPickerModal.addEventListener("click", (event) => {
+      if (event.target?.dataset?.clockClose === "1") closeClockPicker();
+    });
+  }
+
+  syncTimeRangeHints();
+}
+
+if (reservationDateInput) {
+  reservationDateInput.title = "Selecciona la fecha de la reserva";
+}
+
+initSignaturePad();
+bindCalendarAsyncFilters();
+document.querySelector(".calendar-toggle")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  toggleCalendar();
+});
+
+reservationForm?.addEventListener("submit", (event) => {
+  if (!validateAndSerializeSignature()) {
+    event.preventDefault();
+    if (submitReservationBtn) submitReservationBtn.disabled = false;
+    alert("Debes dibujar y presionar \"Guardar firma\" antes de enviar la reservación.");
+    return;
+  }
+});
+
+function renderGroupOptionsForSelectedSubject() {
+  if (!subjectSelect || !groupSelect) return;
+
+  const selectedSubject = (subjectSelect.value || "").toUpperCase();
+  const groups = professorGroupsBySubject[selectedSubject] || [];
+  const previousValue = groupSelect.value;
+
+  groupSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = groups.length ? "Selecciona un grupo" : "Sin grupos para esta materia";
+  groupSelect.appendChild(placeholder);
+
+  groups.forEach((groupCode) => {
+    const option = document.createElement("option");
+    option.value = (groupCode || "").toUpperCase();
+    option.textContent = (groupCode || "").toUpperCase();
+    groupSelect.appendChild(option);
+  });
+
+  if (groups.includes(previousValue)) {
+    groupSelect.value = previousValue;
+  }
+}
+
+if (subjectSelect && groupSelect) {
+  subjectSelect.addEventListener("change", renderGroupOptionsForSelectedSubject);
+  renderGroupOptionsForSelectedSubject();
+}
+</script>
+{% endblock %}
