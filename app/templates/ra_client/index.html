@@ -907,6 +907,8 @@ let isScanning = false;
 let lastDetectedMaterial = null;
 let lastScannedId = null;
 let lastScanTime = 0;
+let isProcessingScan = false;
+const scanCooldownMs = 8000;
 
 /* ============================================================
    CONSOLA
@@ -1127,20 +1129,24 @@ function closeModal(e) {
    ESCANEO QR — CALLBACK
    ============================================================ */
 function onScanSuccess(decodedText) {
+  if (isProcessingScan) return;
   const materialId = normalizeQR(decodedText);
   if (materialId === null) {
     logConsole('WARN', `QR no reconocido: "${decodedText}"`);
     return;
   }
-  // debounce: ignorar mismo ID en 5s
+  // debounce: ignorar mismo ID por ventana de enfriamiento
   const now = Date.now();
-  if (materialId === lastScannedId && now - lastScanTime < 5000) return;
+  if (materialId === lastScannedId && now - lastScanTime < scanCooldownMs) return;
   lastScannedId = materialId;
   lastScanTime = now;
+  isProcessingScan = true;
 
   logConsole('INFO', `QR detectado -> material_id: ${materialId}`);
-  // simulacion GET
-  getMaterial(materialId);
+  // evita requests duplicados mientras se procesa un escaneo válido
+  getMaterial(materialId).finally(() => {
+    isProcessingScan = false;
+  });
 }
 
 function onScanFailure() {

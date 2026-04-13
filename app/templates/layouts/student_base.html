@@ -976,6 +976,21 @@
       let sseRetryCount = 0;
       let fallbackPollTimer = null;
       let fallbackNoticeShown = false;
+      let sseReconnectTimer = null;
+
+      if (!window.__coyolabsNotificationStreamState) {
+        window.__coyolabsNotificationStreamState = {
+          source: null,
+          connecting: false,
+        };
+      }
+      const notificationStreamState = window.__coyolabsNotificationStreamState;
+
+      function clearSSEReconnectTimer() {
+        if (!sseReconnectTimer) return;
+        clearTimeout(sseReconnectTimer);
+        sseReconnectTimer = null;
+      }
 
       function stopFallbackPolling() {
         if (!fallbackPollTimer) return;
@@ -998,9 +1013,21 @@
         }
       }
 
+      function closeSSEConnection() {
+        clearSSEReconnectTimer();
+        notificationStreamState.connecting = false;
+        if (!notificationStreamState.source) return;
+        notificationStreamState.source.close();
+        notificationStreamState.source = null;
+      }
+
       function connectSSE() {
+        if (notificationStreamState.connecting || notificationStreamState.source) return;
+        notificationStreamState.connecting = true;
         const source = new EventSource("{{ url_for('notifications.stream_notifications') }}");
+        notificationStreamState.source = source;
         source.addEventListener("connected", () => {
+          notificationStreamState.connecting = false;
           sseRetryCount = 0;
           stopFallbackPolling();
         });
@@ -1018,12 +1045,13 @@
           scheduleCurrentViewFragmentRefresh();
         });
         source.addEventListener("error", () => {
-          source.close();
+          closeSSEConnection();
           sseRetryCount += 1;
           if (sseRetryCount >= 3) {
             startFallbackPolling();
           }
-          setTimeout(connectSSE, 2000);
+          clearSSEReconnectTimer();
+          sseReconnectTimer = setTimeout(connectSSE, 2000);
         });
       }
 
@@ -1143,6 +1171,8 @@
           });
         }
       }
+      window.addEventListener("beforeunload", closeSSEConnection);
+      window.addEventListener("pagehide", closeSSEConnection);
       connectSSE();
     })();
   </script>

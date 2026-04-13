@@ -2,6 +2,8 @@
 """Dashboard administrativo principal para ADMIN/SUPERADMIN."""
 
 from datetime import datetime, timedelta
+import threading
+import time
 
 from flask import Blueprint, jsonify, render_template, request, url_for
 from flask_login import current_user
@@ -28,6 +30,10 @@ from app.utils.statuses import (
 )
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
+
+OPS_FEED_CACHE_TTL_SECONDS = 8
+_ops_feed_cache_lock = threading.Lock()
+_ops_feed_cache: dict[int, dict] = {}
 
 
 def _search_reports_base() -> list[dict]:
@@ -438,6 +444,12 @@ def dashboard_home():
 @dashboard_bp.route("/ops-feed", methods=["GET"])
 @min_role_required("ADMIN")
 def dashboard_ops_feed():
+    now = time.monotonic()
+    with _ops_feed_cache_lock:
+        cached = _ops_feed_cache.get(current_user.id)
+        if cached and now - cached["ts"] < OPS_FEED_CACHE_TTL_SECONDS:
+            return jsonify(cached["payload"])
+
     today = datetime.now().date()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
@@ -449,6 +461,8 @@ def dashboard_ops_feed():
         week_end=week_end,
         summary_counts=summary_counts,
     )
+    with _ops_feed_cache_lock:
+        _ops_feed_cache[current_user.id] = {"ts": now, "payload": snapshot}
     return jsonify(snapshot)
 
 

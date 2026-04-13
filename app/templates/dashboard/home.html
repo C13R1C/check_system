@@ -843,7 +843,29 @@ window.addEventListener("coyolabs:notification_created", () => {
   refreshOpsSnapshot();
 });
 
-setInterval(refreshOpsSnapshot, 15000);
+let opsPollTimer = null;
+
+function stopOpsPolling() {
+  if (!opsPollTimer) return;
+  clearInterval(opsPollTimer);
+  opsPollTimer = null;
+}
+
+function startOpsPolling() {
+  if (opsPollTimer || document.hidden) return;
+  opsPollTimer = setInterval(refreshOpsSnapshot, 30000);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopOpsPolling();
+    return;
+  }
+  refreshOpsSnapshot();
+  startOpsPolling();
+});
+
+startOpsPolling();
 </script>
 
 {% endblock %}
