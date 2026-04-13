@@ -4,6 +4,9 @@ import queue
 import threading
 from datetime import datetime
 
+from sqlalchemy import func, select
+
+from app.extensions import db
 from app.models.notification import Notification
 from app.services.push_service import dispatch_push_for_notification
 
@@ -55,11 +58,16 @@ def _warn_single_process_delivery_once() -> None:
 
 
 def get_unread_count(user_id: int) -> int:
-    return (
-        Notification.query
-        .filter(Notification.user_id == user_id, Notification.is_read.is_(False))
-        .count()
+    stmt = (
+        select(func.count(Notification.id))
+        .where(
+            Notification.user_id == user_id,
+            Notification.is_read.is_(False),
+        )
     )
+    with db.engine.connect() as conn:
+        value = conn.execute(stmt).scalar_one()
+    return int(value or 0)
 
 
 def notification_to_dict(notification: Notification, unread_count: int | None = None) -> dict:

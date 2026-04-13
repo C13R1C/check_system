@@ -828,7 +828,13 @@ function renderOpsSnapshot(snapshot) {
   `);
 }
 
+let lastOpsRefreshAt = 0;
+const opsRefreshMinGapMs = 8000;
+
 async function refreshOpsSnapshot() {
+  const now = Date.now();
+  if (now - lastOpsRefreshAt < opsRefreshMinGapMs) return;
+  lastOpsRefreshAt = now;
   try {
     const resp = await fetch("{{ url_for('dashboard.dashboard_ops_feed') }}", { credentials: "same-origin" });
     if (!resp.ok) return;
@@ -838,6 +844,7 @@ async function refreshOpsSnapshot() {
 }
 
 renderOpsSnapshot(initialOpsSnapshot);
+refreshOpsSnapshot();
 
 window.addEventListener("coyolabs:notification_created", () => {
   refreshOpsSnapshot();
