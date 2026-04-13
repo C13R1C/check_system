@@ -31,7 +31,9 @@ from app.utils.authz import min_role_required
 
 notifications_bp = Blueprint("notifications", __name__, url_prefix="/notifications")
 
-SSE_HEARTBEAT_SECONDS = 25
+# Keep heartbeat short so stale SSE sockets are released quickly when users navigate
+# between modules; long idle waits can temporarily exhaust gthread workers.
+SSE_HEARTBEAT_SECONDS = 8
 
 
 @notifications_bp.route("/", methods=["GET"])
