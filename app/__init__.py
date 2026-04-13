@@ -17,7 +17,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user
-from sqlalchemy import func
 
 from .config import Config
 from .extensions import db, login_manager, migrate
@@ -158,6 +157,8 @@ def create_app():
 
     @app.context_processor
     def inject_notifications():
+        from app.services.notification_realtime_service import get_unread_count
+
         if not current_user.is_authenticated:
             return {
                 "header_notifications": [],
@@ -183,15 +184,7 @@ def create_app():
             .all()
         )
 
-        unread_count = (
-            db.session.query(func.count(Notification.id))
-            .filter(
-                Notification.user_id == current_user.id,
-                Notification.is_read.is_(False),
-            )
-            .scalar()
-            or 0
-        )
+        unread_count = get_unread_count(current_user.id)
 
         payload = {
             "header_notifications": notifications,
@@ -283,5 +276,13 @@ def create_app():
             abort(400, description="CSRF token inválido o faltante.")
 
         return None
+
+    @app.teardown_appcontext
+    def cleanup_db_session(_exception=None):
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        db.session.remove()
 
     return app

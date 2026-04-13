@@ -75,6 +75,9 @@ def feed_notifications():
 @min_role_required("STUDENT")
 def stream_notifications():
     user_id = current_user.id
+    # El request de SSE queda abierto largo tiempo; cerramos cualquier transacción
+    # asociada a la sesión scoped de Flask-SQLAlchemy antes de entrar al stream.
+    db.session.remove()
 
     @stream_with_context
     def generate():
@@ -96,6 +99,7 @@ def stream_notifications():
                     break
         finally:
             notification_broker.unsubscribe(user_id, subscription)
+            db.session.remove()
 
     response = Response(generate(), mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache, no-transform"
