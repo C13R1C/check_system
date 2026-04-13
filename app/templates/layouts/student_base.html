@@ -999,8 +999,9 @@
       }
 
       function startFallbackPolling() {
-        if (fallbackPollTimer) return;
+        if (fallbackPollTimer || document.hidden) return;
         fallbackPollTimer = setInterval(() => {
+          if (document.hidden) return;
           loadInitialFeed();
         }, 12000);
         if (!fallbackNoticeShown) {
@@ -1022,6 +1023,7 @@
       }
 
       function connectSSE() {
+        if (document.hidden) return;
         if (notificationStreamState.connecting || notificationStreamState.source) return;
         notificationStreamState.connecting = true;
         const source = new EventSource("{{ url_for('notifications.stream_notifications') }}");
@@ -1173,6 +1175,14 @@
       }
       window.addEventListener("beforeunload", closeSSEConnection);
       window.addEventListener("pagehide", closeSSEConnection);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          closeSSEConnection();
+          stopFallbackPolling();
+          return;
+        }
+        connectSSE();
+      });
       connectSSE();
     })();
   </script>
