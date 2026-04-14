@@ -62,6 +62,13 @@ def normalize_spaces(s: str) -> str:
     return s
 
 
+def normalize_upper(value: str | None) -> str | None:
+    """Normaliza texto humano a MAYÚSCULAS manteniendo None intacto."""
+    if value is None:
+        return None
+    return normalize_spaces(value).upper()
+
+
 def smart_title(s: str) -> str:
     s = normalize_spaces(s)
     if not s:

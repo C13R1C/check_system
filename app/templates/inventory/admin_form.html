@@ -5,6 +5,7 @@
 
 {% block content %}
 <style>
+.js-uppercase-safe{text-transform:uppercase}
 .material-image-block{display:grid;gap:10px;grid-template-columns:120px 1fr;align-items:start}
 .material-image-preview{width:110px;height:110px;border:1px dashed var(--stroke);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(255,255,255,.5)}
 .material-image-preview img{width:100%;height:100%;object-fit:cover}
@@ -45,7 +46,7 @@
     {% endif %}
     <div class="toolbar-group">
       <label for="name">Nombre</label>
-      <div class="search-box"><input id="name" name="name" required value="{{ data.get('name', material.name if material else '') }}"></div>
+      <div class="search-box"><input id="name" name="name" class="js-uppercase-safe" required value="{{ data.get('name', material.name if material else '') }}"></div>
     </div>
     <div class="toolbar-group">
       <label for="career_id">Carrera</label>
@@ -88,7 +89,7 @@
         </select>
       </div>
       <div id="locationNewWrap" class="search-box" style="margin-top:8px; {% if location_choice_value != new_location_sentinel %}display:none;{% endif %}">
-        <input id="location_new" name="location_new" placeholder="Ej. Estante A" value="{{ '' if location_exists else normalized_current_location }}">
+        <input id="location_new" name="location_new" class="js-uppercase-safe" placeholder="Ej. Estante A" value="{{ '' if location_exists else normalized_current_location }}">
       </div>
       <small class="datetime-helper">Selecciona una ubicación existente o agrega una nueva.</small>
     </div>
@@ -124,11 +125,11 @@
         id="status_change_reason"
         name="status_change_reason"
         rows="3"
-        class="form-control"
+        class="form-control js-uppercase-safe"
         placeholder="Describe brevemente el motivo del cambio de estado"
       >{{ data.get('status_change_reason', '') }}</textarea>
     </div>
-    <div class="toolbar-group"><label for="pieces_text">Descripción de piezas (opcional)</label><div class="search-box"><input id="pieces_text" name="pieces_text" placeholder="Ej. 20/20, kit completo, faltan tapas" value="{{ data.get('pieces_text', material.pieces_text if material else '') }}"></div></div>
+    <div class="toolbar-group"><label for="pieces_text">Descripción de piezas (opcional)</label><div class="search-box"><input id="pieces_text" name="pieces_text" class="js-uppercase-safe" placeholder="Ej. 20/20, kit completo, faltan tapas" value="{{ data.get('pieces_text', material.pieces_text if material else '') }}"></div></div>
     <div class="toolbar-group"><label for="pieces_qty">Cantidad</label><div class="search-box"><input id="pieces_qty" name="pieces_qty" type="number" min="1" placeholder="Ej. 20 (mínimo 1)" value="{{ data.get('pieces_qty', material.pieces_qty if material else '') }}"></div></div>
     <div class="toolbar-group"><label for="brand">Marca</label><div class="search-box"><input id="brand" name="brand" value="{{ data.get('brand', material.brand if material else '') }}"></div></div>
     <div class="toolbar-group"><label for="model">Modelo</label><div class="search-box"><input id="model" name="model" value="{{ data.get('model', material.model if material else '') }}"></div></div>
@@ -159,7 +160,7 @@
         </div>
       </div>
     </div>
-    <div class="toolbar-group" style="grid-column:1 / -1;"><label for="notes">Observaciones</label><textarea id="notes" name="notes" rows="4" class="form-control">{{ data.get('notes', material.notes if material else '') }}</textarea></div>
+    <div class="toolbar-group" style="grid-column:1 / -1;"><label for="notes">Observaciones</label><textarea id="notes" name="notes" rows="4" class="form-control js-uppercase-safe">{{ data.get('notes', material.notes if material else '') }}</textarea></div>
 
     <div class="toolbar-actions" style="grid-column:1 / -1;">
       <button type="submit" class="btn btn-gold" data-submit-label="{{ 'Actualizando...' if is_edit else 'Guardando...' }}">{{ "Actualizar" if is_edit else "Guardar" }}</button>
