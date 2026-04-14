@@ -1,4 +1,5 @@
 import os
+import re
 from math import ceil
 from uuid import uuid4
 
@@ -165,18 +166,12 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
         return {}, "Selecciona una carrera válida."
 
     pieces_qty_raw = normalize_spaces(request.form.get("pieces_qty") or "")
-    pieces_qty = None
-    if pieces_qty_raw:
-        try:
-            pieces_qty = int(pieces_qty_raw)
-        except ValueError:
-            return {}, "La cantidad de piezas debe ser un número entero."
-        if pieces_qty < 0:
-            return {}, "La cantidad de piezas no puede ser negativa."
-    elif material is None:
+    if not pieces_qty_raw:
         return {}, "La cantidad de piezas es obligatoria y debe ser mayor a 0."
-
-    if material is None and (pieces_qty is None or pieces_qty <= 0):
+    if not re.fullmatch(r"\d+", pieces_qty_raw):
+        return {}, "La cantidad de piezas solo acepta números enteros positivos."
+    pieces_qty = int(pieces_qty_raw)
+    if pieces_qty <= 0:
         return {}, "La cantidad de piezas es obligatoria y debe ser mayor a 0."
 
     tool_condition = normalize_spaces(request.form.get("tool_condition") or "")
@@ -222,12 +217,9 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
         "category": category or None,
         "location": normalized_location,
         "status": status,
-        "pieces_text": normalize_upper(request.form.get("pieces_text")) or (str(pieces_qty) if pieces_qty is not None else None),
         "pieces_qty": pieces_qty,
         "brand": normalize_spaces(request.form.get("brand") or "") or None,
         "model": normalize_spaces(request.form.get("model") or "") or None,
-        "code": normalize_spaces(request.form.get("code") or "") or None,
-        "serial": normalize_spaces(request.form.get("serial") or "") or None,
         "tutorial_url": tutorial_url or None,
         "image_url": image_url or None,
         "notes": normalize_upper(request.form.get("notes")) or None,
