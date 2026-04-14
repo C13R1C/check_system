@@ -114,6 +114,25 @@
     text-align:left;
   }
 }
+@media (max-width: 768px){
+  .profile-panel .toolbar{
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
+  .profile-panel .toolbar-group,
+  .profile-panel .search-box{
+    min-width: 0;
+  }
+  .profile-panel .toolbar-actions{
+    width: 100%;
+    justify-content: stretch;
+    align-self: stretch !important;
+  }
+  .profile-panel .toolbar-actions .btn{
+    width: 100%;
+    max-width: 100%;
+  }
+}
 </style>
 <header class="topbar">
   <div class="topbar-left">
@@ -141,7 +160,7 @@
       <p class="profile-panel-subtitle">Información principal de tu cuenta para uso institucional.</p>
       {% set display_career = current_user.career_rel.name if current_user.career_rel else (current_user.career or '-') %}
       <div class="profile-kv">
-        <div class="profile-kv-item"><strong>Nombre completo</strong><span>{{ current_user.full_name or '-' }}</span></div>
+        <div class="profile-kv-item"><strong>Nombre completo</strong><span class="always-uppercase">{{ current_user.full_name or '-' }}</span></div>
         <div class="profile-kv-item"><strong>Correo institucional</strong><span>{{ current_user.email }}</span></div>
         <div class="profile-kv-item"><strong>Teléfono</strong><span>{{ current_user.phone or '-' }}</span></div>
         <div class="profile-kv-item"><strong>Rol</strong><span>{{ current_user.role|role_label }}</span></div>
@@ -172,7 +191,7 @@
             <label>Nombre completo</label>
             <div class="search-box">
               <i class="ph ph-user search-icon"></i>
-              <input type="text" name="full_name" value="{{ current_user.full_name or '' }}" placeholder="Ej.: Nombre Apellido" required>
+              <input type="text" name="full_name" class="always-uppercase" value="{{ current_user.full_name or '' }}" placeholder="Ej.: Nombre Apellido" required>
             </div>
           </div>
           <div class="toolbar-group">

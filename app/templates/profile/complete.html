@@ -188,6 +188,10 @@
       transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
 
+    .always-uppercase {
+      text-transform: uppercase;
+    }
+
     input::placeholder,
     textarea::placeholder {
       color: #7a8395;
@@ -378,6 +382,7 @@
               <input
                 id="full_name"
                 name="full_name"
+                class="always-uppercase"
                 placeholder="Ejemplo: María Fernanda López Díaz"
                 required
               >

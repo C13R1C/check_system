@@ -1203,7 +1203,27 @@ textarea.form-control{
     z-index: 1200;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 26px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-scroll{
+    overflow: visible;
+    min-height: auto;
+    flex: 0 0 auto;
+    padding-right: 0;
+  }
+
+  .sidebar-footer{
+    margin-top: 12px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .sidebar-footer-card .footer-label,
+  .sidebar-footer-card strong{
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .sidebar.mobile-open{
