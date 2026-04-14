@@ -98,8 +98,8 @@
         {% for m in materials %}
           {% set status_value = (m.status or '') %}
           {% set status_parts = status_value.split(' - ') %}
-          {% set active_state = status_parts[0] if status_parts|length > 1 else ('Baja' if ('baja' in status_value|lower or 'inactivo' in status_value|lower) else 'Alta') %}
-          {% set condition = status_parts[1] if status_parts|length > 1 else ('Regular' if 'frágil' in status_value|lower else 'Bueno') %}
+          {% set active_state = status_parts[0] if status_parts|length > 1 else ('BAJA' if ('baja' in status_value|lower or 'inactivo' in status_value|lower) else 'ALTA') %}
+          {% set condition = status_parts[1] if status_parts|length > 1 else ('REGULAR' if 'frágil' in status_value|lower else 'BUENO') %}
           <tr class="inventory-row">
             <td><a href="{{ url_for('inventory.material_detail', material_id=m.id) }}" class="item-link material-name">{{ m.name | smart_title }}</a></td>
             <td>
@@ -113,7 +113,7 @@
             <td>{{ m.career.name if m.career else 'Sin carrera' }}</td>
             <td class="td-center">
               <span class="status-badge {% if active_state|lower == 'alta' and condition|lower == 'bueno' %}status-ok{% elif active_state|lower == 'baja' %}status-bad{% else %}status-warn{% endif %}">
-                {{ active_state | smart_title }} · {{ condition | smart_title }}
+                {{ active_state | upper }} · {{ condition | upper }}
               </span>
             </td>
             <td class="td-center">{{ m.pieces_qty if m.pieces_qty is not none else (m.pieces_text or '-') }}</td>
