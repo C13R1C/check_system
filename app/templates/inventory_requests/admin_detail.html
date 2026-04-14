@@ -207,7 +207,7 @@
       </div>
       <div class="toolbar-group">
         <label for="partial_delivery_note">Nota administrativa (obligatoria si la entrega es parcial)</label>
-        <textarea id="partial_delivery_note" name="partial_delivery_note" rows="2" class="form-control" placeholder="Ejemplo: Se entregaron menos piezas por disponibilidad."></textarea>
+        <textarea id="partial_delivery_note" name="partial_delivery_note" rows="2" class="form-control js-uppercase-safe" placeholder="Ejemplo: Se entregaron menos piezas por disponibilidad."></textarea>
       </div>
       <div class="toolbar-actions" style="justify-content:flex-end;">
         <button type="submit" class="btn btn-gold">Entregar material y marcar listo para recoger</button>
@@ -218,7 +218,7 @@
   <div class="admin-action-card" style="margin-top:12px;">
     <h4 style="margin:0;">Rechazo de solicitud</h4>
     <form method="post" action="{{ url_for('inventory_requests.admin_reject_ticket', ticket_id=ticket.id) }}" style="display:grid; gap:8px;">
-      <textarea name="reject_reason" rows="2" class="form-control" placeholder="Motivo de rechazo (obligatorio)" required></textarea>
+      <textarea name="reject_reason" rows="2" class="form-control js-uppercase-safe" placeholder="Motivo de rechazo (obligatorio)" required></textarea>
       <div class="toolbar-actions" style="justify-content:flex-end;">
         <button type="submit" class="btn btn-ghost">Rechazar solicitud</button>
       </div>
@@ -252,7 +252,7 @@
       </div>
       <div class="toolbar-group">
         <label for="cancel_reason">Motivo de cierre/cancelación</label>
-        <textarea id="cancel_reason" name="cancel_reason" rows="2" class="form-control" placeholder="Motivo obligatorio" required></textarea>
+        <textarea id="cancel_reason" name="cancel_reason" rows="2" class="form-control js-uppercase-safe" placeholder="Motivo obligatorio" required></textarea>
       </div>
       <div class="toolbar-actions" style="justify-content:flex-end;">
         <button type="submit" class="btn btn-gold">Guardar devolución (Cerrar)</button>

@@ -17,6 +17,7 @@ from app.services.notification_service import build_notification, notify_roles, 
 from app.utils.authz import min_role_required
 from app.utils.roles import ROLE_STUDENT, is_admin_role, normalize_role
 from app.utils.statuses import DebtStatus, InventoryRequestStatus
+from app.utils.text import normalize_upper
 
 
 inventory_requests_bp = Blueprint("inventory_requests", __name__, url_prefix="/inventory-requests")
@@ -274,7 +275,7 @@ def my_daily_request():
 def add_to_daily_request():
     material_ids = request.form.getlist("material_id[]")
     quantities = request.form.getlist("quantity[]")
-    request_reason = (request.form.get("request_reason") or "").strip()
+    request_reason = normalize_upper(request.form.get("request_reason")) or ""
     session["daily_request_reason_draft"] = request_reason
 
     if not request_reason:
@@ -490,7 +491,7 @@ def admin_mark_ready(ticket_id: int):
             has_partial_delivery = True
         item.quantity_delivered = delivered
 
-    partial_delivery_note = (request.form.get("partial_delivery_note") or "").strip()
+    partial_delivery_note = normalize_upper(request.form.get("partial_delivery_note")) or ""
     if has_partial_delivery and not partial_delivery_note:
         flash("Debes registrar una nota administrativa cuando entregas menos material del solicitado.", "error")
         return redirect(url_for("inventory_requests.admin_ticket_detail", ticket_id=ticket.id))
@@ -552,7 +553,7 @@ def admin_reject_ticket(ticket_id: int):
         flash("Solo puedes rechazar solicitudes abiertas.", "error")
         return redirect(url_for("inventory_requests.admin_ticket_detail", ticket_id=ticket.id))
 
-    reject_reason = (request.form.get("reject_reason") or "").strip()
+    reject_reason = normalize_upper(request.form.get("reject_reason")) or ""
     if not reject_reason:
         flash("Debes capturar un motivo de rechazo.", "error")
         return redirect(url_for("inventory_requests.admin_ticket_detail", ticket_id=ticket.id))
@@ -620,7 +621,7 @@ def admin_register_return(ticket_id: int):
 
         item.quantity_returned = returned
 
-    cancel_reason = (request.form.get("cancel_reason") or "").strip()
+    cancel_reason = normalize_upper(request.form.get("cancel_reason")) or ""
     if not cancel_reason:
         flash("Debes capturar el motivo para cerrar/cancelar la solicitud.", "error")
         return redirect(url_for("inventory_requests.admin_ticket_detail", ticket_id=ticket.id))

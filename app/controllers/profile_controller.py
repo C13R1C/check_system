@@ -63,7 +63,7 @@ def _has_min_real_chars(value: str, minimum: int = 3) -> bool:
 
 
 def _normalize_group_name(raw_group_name: str | None) -> tuple[str | None, str | None]:
-    group_name = (raw_group_name or "").strip()
+    group_name = normalize_upper(raw_group_name) or ""
     if not group_name:
         return None, None
     if len(group_name) > 80:
@@ -557,7 +557,7 @@ def complete_profile():
         if is_student:
             current_user.matricula = matricula
             current_user.career_id = career_obj.id
-            current_user.career = career_obj.name
+            current_user.career = normalize_upper(career_obj.name)
             current_user.academic_level_id = level_obj.id if level_obj else None
             current_user.academic_level = level_obj.code if level_obj else None
             current_user.group_name = group_name
@@ -565,7 +565,7 @@ def complete_profile():
         elif is_professor:
             current_user.matricula = None
             current_user.career_id = career_obj.id
-            current_user.career = career_obj.name
+            current_user.career = normalize_upper(career_obj.name)
             current_user.academic_level_id = None
             current_user.academic_level = None
             current_user.group_name = None

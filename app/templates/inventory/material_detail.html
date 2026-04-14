@@ -46,9 +46,9 @@
       <tbody>
         <tr><td><strong>ID interno</strong></td><td>{{ material.id }}</td></tr>
         <tr><td><strong>Ubicación</strong></td><td>{{ material.location | smart_title }}</td></tr>
-        <tr><td><strong>Marca</strong></td><td>{{ material.brand or '-' }}</td></tr>
-        <tr><td><strong>Modelo</strong></td><td>{{ material.model or '-' }}</td></tr>
-        <tr><td><strong>Observaciones</strong></td><td>{{ material.notes or 'Sin observaciones' }}</td></tr>
+        <tr><td><strong>Marca</strong></td><td>{{ (material.brand or '-') | upper }}</td></tr>
+        <tr><td><strong>Modelo</strong></td><td>{{ (material.model or '-') | upper }}</td></tr>
+        <tr><td><strong>Observaciones</strong></td><td>{{ (material.notes or 'Sin observaciones') | upper }}</td></tr>
         {% if material_image_src %}
           <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>
         {% else %}

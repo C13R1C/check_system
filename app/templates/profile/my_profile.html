@@ -167,12 +167,12 @@
         {% if current_user.matricula %}
           <div class="profile-kv-item"><strong>Matrícula</strong><span>{{ current_user.matricula or '-' }}</span></div>
         {% endif %}
-        <div class="profile-kv-item"><strong>Carrera</strong><span>{{ display_career }}</span></div>
+        <div class="profile-kv-item"><strong>Carrera</strong><span class="always-uppercase">{{ display_career }}</span></div>
         {% if current_user.academic_level %}
           <div class="profile-kv-item"><strong>Nivel académico</strong><span>{{ current_user.academic_level or '-' }}</span></div>
         {% endif %}
         {% if current_user.group_name %}
-          <div class="profile-kv-item"><strong>Grupo</strong><span>{{ current_user.group_name }}</span></div>
+          <div class="profile-kv-item"><strong>Grupo</strong><span class="always-uppercase">{{ current_user.group_name }}</span></div>
         {% endif %}
         <div class="profile-kv-item"><strong>Correo verificado</strong><span>{{ 'Sí' if current_user.is_verified else 'No' }}</span></div>
       </div>
@@ -191,7 +191,7 @@
             <label>Nombre completo</label>
             <div class="search-box">
               <i class="ph ph-user search-icon"></i>
-              <input type="text" name="full_name" class="always-uppercase" value="{{ current_user.full_name or '' }}" placeholder="Ej.: Nombre Apellido" required>
+              <input type="text" name="full_name" class="always-uppercase js-uppercase-safe" value="{{ current_user.full_name or '' }}" placeholder="Ej.: Nombre Apellido" required>
             </div>
           </div>
           <div class="toolbar-group">
@@ -250,7 +250,7 @@
             <label>Grupo</label>
             <div class="search-box">
               <i class="ph ph-users search-icon"></i>
-              <input type="text" name="group_name" value="{{ current_user.group_name or '' }}" placeholder="Ej. TIDSM31 / REDES-3A / etc." maxlength="80">
+              <input type="text" name="group_name" class="js-uppercase-safe" value="{{ current_user.group_name or '' }}" placeholder="Ej. TIDSM31 / REDES-3A / etc." maxlength="80">
             </div>
           </div>
           <div class="toolbar-actions" style="align-self:end;">
@@ -314,7 +314,7 @@
       <label>Materia</label>
       <div class="search-box">
         <i class="ph ph-book-open search-icon"></i>
-        <input type="text" name="subject_name" placeholder="Ej.: Programación Web" maxlength="160" required class="always-uppercase">
+        <input type="text" name="subject_name" placeholder="Ej.: Programación Web" maxlength="160" required class="always-uppercase js-uppercase-safe">
       </div>
     </div>
 
@@ -322,7 +322,7 @@
       <label>Grupo (en mayúsculas)</label>
       <div class="search-box">
         <i class="ph ph-users search-icon"></i>
-        <input type="text" name="group_code" placeholder="Ej.: 3A" required class="always-uppercase">
+        <input type="text" name="group_code" placeholder="Ej.: 3A" required class="always-uppercase js-uppercase-safe">
       </div>
     </div>
 

@@ -500,6 +500,10 @@ textarea{
   font-size: 1rem;
 }
 
+.js-uppercase-safe{
+  text-transform: uppercase;
+}
+
 /* User chip */
 .user-chip{
   display: flex;
