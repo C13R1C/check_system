@@ -1,4 +1,5 @@
 import os
+import re
 from math import ceil
 from uuid import uuid4
 
@@ -15,7 +16,7 @@ from app.services.audit_service import log_event
 from app.utils.authz import min_role_required
 from app.utils.roles import ROLE_STUDENT, is_admin_role, normalize_role
 from app.utils.media import resolve_media_url
-from app.utils.text import normalize_spaces
+from app.utils.text import normalize_spaces, normalize_upper
 
 
 
@@ -72,10 +73,10 @@ def _material_image_src(material: Material | None) -> str | None:
 
 
 def _normalize_location(value: str | None) -> str:
-    normalized = normalize_spaces(value or "")
+    normalized = normalize_upper(value) or ""
     if not normalized:
         return ""
-    return " ".join(part[:1].upper() + part[1:].lower() for part in normalized.split(" "))
+    return normalized
 
 
 def _existing_location_options(extra_values: list[str] | None = None) -> list[str]:
@@ -143,7 +144,7 @@ def _apply_student_career_scope(query):
 
 
 def _material_payload_from_form(material: Material | None = None) -> tuple[dict, str | None]:
-    name = normalize_spaces(request.form.get("name") or "")
+    name = normalize_upper(request.form.get("name")) or ""
     if not name:
         return {}, "El nombre del material es obligatorio."
 
@@ -165,18 +166,12 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
         return {}, "Selecciona una carrera válida."
 
     pieces_qty_raw = normalize_spaces(request.form.get("pieces_qty") or "")
-    pieces_qty = None
-    if pieces_qty_raw:
-        try:
-            pieces_qty = int(pieces_qty_raw)
-        except ValueError:
-            return {}, "La cantidad de piezas debe ser un número entero."
-        if pieces_qty < 0:
-            return {}, "La cantidad de piezas no puede ser negativa."
-    elif material is None:
+    if not pieces_qty_raw:
         return {}, "La cantidad de piezas es obligatoria y debe ser mayor a 0."
-
-    if material is None and (pieces_qty is None or pieces_qty <= 0):
+    if not re.fullmatch(r"\d+", pieces_qty_raw):
+        return {}, "La cantidad de piezas solo acepta números enteros positivos."
+    pieces_qty = int(pieces_qty_raw)
+    if pieces_qty <= 0:
         return {}, "La cantidad de piezas es obligatoria y debe ser mayor a 0."
 
     tool_condition = normalize_spaces(request.form.get("tool_condition") or "")
@@ -191,11 +186,11 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
         status = f"{active_state or 'Alta'} - {tool_condition or 'Bueno'}"
     if not status:
         status = material.status if material else "Alta - Bueno"
-    status_change_reason = normalize_spaces(request.form.get("status_change_reason") or "")
+    status_change_reason = normalize_upper(request.form.get("status_change_reason")) or ""
     if material is None and _is_inactive_status(status) and not status_change_reason:
         return {}, "Debes capturar el motivo al crear un material en estado de baja."
 
-    category = normalize_spaces(request.form.get("category") or "").upper()
+    category = normalize_upper(request.form.get("category")) or ""
     if category and category not in MATERIAL_CATEGORIES:
         return {}, "Selecciona una categoría válida."
 
@@ -222,15 +217,12 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
         "category": category or None,
         "location": normalized_location,
         "status": status,
-        "pieces_text": normalize_spaces(request.form.get("pieces_text") or "") or (str(pieces_qty) if pieces_qty is not None else None),
         "pieces_qty": pieces_qty,
         "brand": normalize_spaces(request.form.get("brand") or "") or None,
         "model": normalize_spaces(request.form.get("model") or "") or None,
-        "code": normalize_spaces(request.form.get("code") or "") or None,
-        "serial": normalize_spaces(request.form.get("serial") or "") or None,
         "tutorial_url": tutorial_url or None,
         "image_url": image_url or None,
-        "notes": normalize_spaces(request.form.get("notes") or "") or None,
+        "notes": normalize_upper(request.form.get("notes")) or None,
     }
     if material is None and _is_inactive_status(status):
         payload["notes"] = status_change_reason
@@ -441,7 +433,7 @@ def admin_edit_material(material_id: int):
         payload, error = _material_payload_from_form(material)
         form_data = dict(request.form)
         active_state_default, tool_condition_default = _status_form_defaults(material, form_data)
-        reason_value = normalize_spaces(request.form.get("status_change_reason") or "")
+        reason_value = normalize_upper(request.form.get("status_change_reason")) or ""
         remove_image = (request.form.get("remove_image") or "").strip() == "1"
         new_image_ref, image_error = _save_material_image(request.files.get("image_file"))
         if not error and image_error:
