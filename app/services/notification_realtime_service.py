@@ -14,25 +14,32 @@ from app.services.push_service import dispatch_push_for_notification
 class NotificationBroker:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._subscribers: dict[int, list[queue.Queue]] = {}
+        self._subscribers: dict[int, dict[str, queue.Queue]] = {}
 
-    def subscribe(self, user_id: int) -> queue.Queue:
+    def subscribe(self, user_id: int, client_id: str) -> queue.Queue:
         q: queue.Queue = queue.Queue(maxsize=100)
         with self._lock:
-            self._subscribers.setdefault(user_id, []).append(q)
+            user_subscribers = self._subscribers.setdefault(user_id, {})
+            existing = user_subscribers.get(client_id)
+            if existing:
+                try:
+                    existing.put_nowait(("disconnect", {"reason": "replaced"}))
+                except queue.Full:
+                    pass
+            user_subscribers[client_id] = q
         return q
 
-    def unsubscribe(self, user_id: int, q: queue.Queue) -> None:
+    def unsubscribe(self, user_id: int, client_id: str, q: queue.Queue) -> None:
         with self._lock:
-            queues = self._subscribers.get(user_id, [])
-            if q in queues:
-                queues.remove(q)
-            if not queues and user_id in self._subscribers:
+            user_subscribers = self._subscribers.get(user_id, {})
+            if user_subscribers.get(client_id) is q:
+                del user_subscribers[client_id]
+            if not user_subscribers and user_id in self._subscribers:
                 del self._subscribers[user_id]
 
     def publish(self, user_id: int, event_name: str, payload: dict) -> None:
         with self._lock:
-            queues = list(self._subscribers.get(user_id, []))
+            queues = list(self._subscribers.get(user_id, {}).values())
 
         for q in queues:
             try:

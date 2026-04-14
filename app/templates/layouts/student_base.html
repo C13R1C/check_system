@@ -573,6 +573,9 @@
   {% if current_user.is_authenticated %}
   <script>
     (function () {
+      if (window.__coyolabsNotificationsBootstrapped) return;
+      window.__coyolabsNotificationsBootstrapped = true;
+
       const notificationContainer = document.getElementById("notification-container");
       const badge = document.getElementById("notificationBadge");
       const panelList = document.getElementById("notificationPanelList");
@@ -985,6 +988,21 @@
         };
       }
       const notificationStreamState = window.__coyolabsNotificationStreamState;
+      const sseClientIdStorageKey = "coyolabs_notifications_sse_client_id";
+
+      function getSSEClientId() {
+        try {
+          const existing = window.sessionStorage.getItem(sseClientIdStorageKey);
+          if (existing) return existing;
+          const nextId = (window.crypto && window.crypto.randomUUID)
+            ? window.crypto.randomUUID()
+            : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          window.sessionStorage.setItem(sseClientIdStorageKey, nextId);
+          return nextId;
+        } catch (_) {
+          return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
+      }
 
       function clearSSEReconnectTimer() {
         if (!sseReconnectTimer) return;
@@ -1035,7 +1053,9 @@
         if (document.hidden) return;
         if (notificationStreamState.connecting || notificationStreamState.source) return;
         notificationStreamState.connecting = true;
-        const source = new EventSource("{{ url_for('notifications.stream_notifications') }}");
+        const streamUrl = new URL("{{ url_for('notifications.stream_notifications') }}", window.location.origin);
+        streamUrl.searchParams.set("client_id", getSSEClientId());
+        const source = new EventSource(streamUrl.toString());
         notificationStreamState.source = source;
         source.addEventListener("connected", () => {
           notificationStreamState.connecting = false;
@@ -1195,6 +1215,9 @@
       }
       window.addEventListener("beforeunload", stopNotificationRealtime);
       window.addEventListener("pagehide", stopNotificationRealtime);
+      window.addEventListener("pageshow", () => {
+        connectSSE();
+      });
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
           stopNotificationRealtime();
