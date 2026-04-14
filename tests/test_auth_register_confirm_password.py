@@ -82,6 +82,11 @@ class RegisterConfirmPasswordTests(unittest.TestCase):
     def test_infer_role_from_email_assigns_pending_for_nominal_email(self):
         self.assertEqual(infer_role_from_email("wendy.nevarez@utpn.edu.mx"), ROLE_PENDING)
 
+    def test_infer_role_from_email_assigns_pending_for_institutional_text_accounts(self):
+        for email in ("soporte@utpn.edu.mx", "admin.redes@utpn.edu.mx", "nombre.profe+lab@utpn.edu.mx"):
+            self.assertEqual(infer_role_from_email(email), ROLE_PENDING)
+            self.assertNotEqual(infer_role_from_email(email), ROLE_STAFF)
+
     @patch("app.controllers.auth_controller.send_verification_email")
     @patch("app.controllers.auth_controller.generate_verify_token", return_value="tok123")
     @patch("app.controllers.auth_controller.db")

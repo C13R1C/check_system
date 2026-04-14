@@ -74,7 +74,7 @@ def reject_reservation(reservation: Reservation, admin_user: User, admin_note: s
 
 
 def expire_unapproved_reservations(now_dt: datetime | None = None) -> int:
-    """Auto-cancel pending reservations whose start time has already begun."""
+    """Auto-close pending reservations whose start time has already begun."""
     now = now_dt or datetime.now()
     cancel_reason = normalize_upper("Cancelada por falta de confirmación")
 
@@ -93,7 +93,7 @@ def expire_unapproved_reservations(now_dt: datetime | None = None) -> int:
         if reservation_start > now:
             continue
 
-        reservation.status = ReservationStatus.CANCELLED
+        reservation.status = ReservationStatus.REJECTED
         if hasattr(reservation, "admin_note"):
             reservation.admin_note = cancel_reason
 

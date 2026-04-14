@@ -41,8 +41,8 @@ ASSIGNABLE_ADMIN_ROLES = {
 # ===== REGLAS DE EMAIL =====
 EMAIL_DOMAIN = "utpn.edu.mx"
 STUDENT_EMAIL_RE = re.compile(r"^\d{8}@utpn\.edu\.mx$", re.IGNORECASE)
-INSTITUTIONAL_NOMINAL_EMAIL_RE = re.compile(
-    r"^[a-z]+(?:\.[a-z]+)*@utpn\.edu\.mx$",
+INSTITUTIONAL_EMAIL_RE = re.compile(
+    r"^[a-z0-9]+(?:[._%+-][a-z0-9]+)*@utpn\.edu\.mx$",
     re.IGNORECASE,
 )
 
@@ -91,7 +91,7 @@ def infer_role_from_email(email: Optional[str]) -> Optional[str]:
     if STUDENT_EMAIL_RE.match(normalized_email):
         return ROLE_STUDENT
 
-    if INSTITUTIONAL_NOMINAL_EMAIL_RE.match(normalized_email):
+    if INSTITUTIONAL_EMAIL_RE.match(normalized_email):
         return ROLE_PENDING
 
     return None
