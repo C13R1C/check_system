@@ -72,7 +72,6 @@ DEFAULT_XLSX_CURATED_COLUMNS = DEFAULT_PDF_CURATED_COLUMNS[:]
 
 RESERVATIONS_DEFAULT_COLUMNS = [
     "group_name",
-    "user_id",
     "teacher_name",
     "subject",
     "date",
@@ -108,7 +107,7 @@ REPORT_COLUMN_LABELS = {
     "start_time": "Inicio",
     "end_time": "Fin",
     "group_name": "Grupo",
-    "teacher_name": "Docente",
+    "teacher_name": "Solicitante",
     "subject": "Materia",
     "notes": "Notas",
     "version": "Versión",
@@ -422,14 +421,14 @@ def build_reservations_rows(status=None, room=None, user_id=None, date_from=None
 
     items = q.order_by(Reservation.created_at.desc()).all()
     headers = [
-        "id", "user_id", "room", "date", "start_time", "end_time", "status",
+        "id", "room", "date", "start_time", "end_time", "status",
         "group_name", "teacher_name", "subject", "signed",
         "signature_ref", "admin_note", "purpose", "exit_time", "teacher_comments", "created_at",
     ]
     rows = []
     for r in items:
         rows.append([
-            r.id, r.user_id, r.room, r.date, r.start_time, r.end_time, r.status,
+            r.id, r.room, r.date, r.start_time, r.end_time, r.status,
             getattr(r, "group_name", None), getattr(r, "teacher_name", None), getattr(r, "subject", None),
             getattr(r, "signed", None),
             getattr(r, "signature_ref", None),
