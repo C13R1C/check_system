@@ -19,6 +19,7 @@ from app.models.reservation import Reservation
 from app.models.lost_found import LostFound
 from app.models.software import Software
 from app.utils.authz import min_role_required
+from app.utils.media import resolve_media_url
 from app.extensions import db
 
 from reportlab.lib.pagesizes import letter, landscape
@@ -51,7 +52,6 @@ PDF_TECHNICAL_EXCLUDED_COLUMNS = {
     "metadata_json",
     "serial",
     "updated_at",
-    "signature_ref",
     "evidence_ref",
 }
 
@@ -69,6 +69,18 @@ DEFAULT_PDF_CURATED_COLUMNS = [
 ]
 
 DEFAULT_XLSX_CURATED_COLUMNS = DEFAULT_PDF_CURATED_COLUMNS[:]
+
+RESERVATIONS_DEFAULT_COLUMNS = [
+    "group_name",
+    "user_id",
+    "teacher_name",
+    "subject",
+    "date",
+    "start_time",
+    "end_time",
+    "admin_note",
+    "signature_ref",
+]
 
 REPORT_COLUMN_LABELS = {
     "id": "ID",
@@ -176,22 +188,35 @@ def excel_response(filename: str, headers: list[str], rows: list[list]):
     )
 
 
-def parse_selected_columns(headers: list[str]) -> list[str]:
+def _curated_columns(headers: list[str], preferred: list[str] | None = None) -> list[str]:
+    if preferred:
+        curated = []
+        seen = set()
+        for col in preferred:
+            if col in headers and col not in seen:
+                curated.append(col)
+                seen.add(col)
+        if curated:
+            return curated
+    curated = [col for col in headers if col not in DEFAULT_DEMO_HIDDEN_COLUMNS]
+    return curated or headers
+
+
+def parse_selected_columns(headers: list[str], preferred_defaults: list[str] | None = None) -> list[str]:
     selected = request.args.getlist("cols")
     if not selected:
         raw = (request.args.get("cols") or "").strip()
         if raw:
             selected = [part.strip() for part in raw.split(",") if part.strip()]
     if not selected:
-        curated = [col for col in headers if col not in DEFAULT_DEMO_HIDDEN_COLUMNS]
-        return curated or headers
+        return _curated_columns(headers, preferred_defaults)
     allowed = set(headers)
     normalized = [col for col in selected if col in allowed]
     limited = normalized or headers
     return limited[:9]
 
 
-def parse_pdf_selected_columns(headers: list[str]) -> list[str]:
+def parse_pdf_selected_columns(headers: list[str], preferred_defaults: list[str] | None = None) -> list[str]:
     selected = request.args.getlist("cols")
     if not selected:
         raw = (request.args.get("cols") or "").strip()
@@ -204,7 +229,8 @@ def parse_pdf_selected_columns(headers: list[str]) -> list[str]:
         if normalized:
             return normalized[:9]
 
-    curated = [col for col in DEFAULT_PDF_CURATED_COLUMNS if col in allowed]
+    preferred = preferred_defaults or DEFAULT_PDF_CURATED_COLUMNS
+    curated = [col for col in preferred if col in allowed]
     if curated:
         return curated
 
@@ -212,7 +238,7 @@ def parse_pdf_selected_columns(headers: list[str]) -> list[str]:
     return (fallback or headers)[:9]
 
 
-def parse_excel_selected_columns(headers: list[str]) -> list[str]:
+def parse_excel_selected_columns(headers: list[str], preferred_defaults: list[str] | None = None) -> list[str]:
     selected = request.args.getlist("cols")
     if not selected:
         raw = (request.args.get("cols") or "").strip()
@@ -225,7 +251,8 @@ def parse_excel_selected_columns(headers: list[str]) -> list[str]:
         if normalized:
             return normalized[:9]
 
-    curated = [col for col in DEFAULT_XLSX_CURATED_COLUMNS if col in allowed]
+    preferred = preferred_defaults or DEFAULT_XLSX_CURATED_COLUMNS
+    curated = [col for col in preferred if col in allowed]
     if curated:
         return curated
 
@@ -249,6 +276,42 @@ def project_rows(headers: list[str], rows: list[list], selected_columns: list[st
     for row in rows:
         projected_rows.append([row[index_by_name[name]] for name in projected_headers])
     return projected_headers, projected_rows
+
+
+def _resolve_media_file_path(raw_ref: str | None) -> str | None:
+    media_url = resolve_media_url(raw_ref, ensure_static_file=False)
+    if not media_url:
+        return None
+    if media_url.startswith("/static/"):
+        relative = media_url.replace("/static/", "", 1)
+        abs_path = os.path.join(current_app.root_path, "static", relative)
+        if os.path.exists(abs_path):
+            return abs_path
+    return None
+
+
+def format_rows_for_display(headers: list[str], rows: list[list], image_columns: set[str] | None = None) -> list[list]:
+    image_columns = image_columns or set()
+    if not image_columns:
+        return rows
+
+    formatted_rows = []
+    for row in rows:
+        formatted_row = []
+        for col, value in zip(headers, row):
+            if col in image_columns:
+                formatted_row.append(
+                    {
+                        "kind": "image",
+                        "url": resolve_media_url(value),
+                        "alt": "Firma",
+                        "fallback": "Sin firma",
+                    }
+                )
+                continue
+            formatted_row.append(value)
+        formatted_rows.append(formatted_row)
+    return formatted_rows
 
 
 def build_download_url(endpoint: str) -> str:
@@ -462,6 +525,7 @@ def _pdf_col_weight(header: str) -> float:
         "code": 0.9,
         "notes": 1.6,
         "created_at": 1.1,
+        "signature_ref": 1.1,
     }
     return weights.get(header, 1.0)
 
@@ -500,7 +564,20 @@ def pdf_response(
     story.append(Spacer(1, 8))
 
     translated_headers = [REPORT_COLUMN_LABELS.get(h, h.replace("_", " ").title()) for h in headers]
-    table_data = [translated_headers] + [[_sanitize_pdf_cell(v) for v in row] for row in rows]
+    table_data = [translated_headers]
+    for row in rows:
+        normalized_row = []
+        for idx, value in enumerate(row):
+            header = headers[idx] if idx < len(headers) else ""
+            if header == "signature_ref":
+                signature_file = _resolve_media_file_path(value)
+                if signature_file:
+                    normalized_row.append(Image(signature_file, width=1.4 * inch, height=0.55 * inch))
+                else:
+                    normalized_row.append("Sin firma")
+                continue
+            normalized_row.append(_sanitize_pdf_cell(value))
+        table_data.append(normalized_row)
     available_width = doc.width
     col_count = max(1, len(headers))
     weights = [_pdf_col_weight(header) for header in headers]
@@ -871,7 +948,7 @@ def report_reservations():
         date_from=date_from or None,
         date_to=date_to or None,
     )
-    selected_columns = parse_selected_columns(headers)
+    selected_columns = parse_selected_columns(headers, preferred_defaults=RESERVATIONS_DEFAULT_COLUMNS)
     headers, rows = project_rows(headers, rows, selected_columns)
     return csv_response("reservations.csv", headers, rows)
 
@@ -892,7 +969,7 @@ def report_reservations_excel():
         date_from=date_from or None,
         date_to=date_to or None,
     )
-    selected_columns = parse_excel_selected_columns(headers)
+    selected_columns = parse_excel_selected_columns(headers, preferred_defaults=RESERVATIONS_DEFAULT_COLUMNS)
     headers, rows = project_rows(headers, rows, selected_columns)
     return excel_response("reservations.xlsx", headers, rows)
 
@@ -914,8 +991,9 @@ def report_reservations_view():
         date_to=date_to or None,
     )
     all_headers = headers[:]
-    selected_columns = parse_selected_columns(headers)
+    selected_columns = parse_selected_columns(headers, preferred_defaults=RESERVATIONS_DEFAULT_COLUMNS)
     headers, rows = project_rows(headers, rows, selected_columns)
+    rows = format_rows_for_display(headers, rows, image_columns={"signature_ref"})
     return render_report_view(
         report_title="Reservaciones",
         headers=headers,
@@ -1126,7 +1204,7 @@ def report_reservations_pdf():
         date_from=date_from or None,
         date_to=date_to or None,
     )
-    selected_columns = parse_pdf_selected_columns(headers)
+    selected_columns = parse_pdf_selected_columns(headers, preferred_defaults=RESERVATIONS_DEFAULT_COLUMNS)
     headers, rows = project_rows(headers, rows, selected_columns)
     return pdf_response(
         filename="reservations.pdf",
