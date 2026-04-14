@@ -77,22 +77,26 @@ def feed_notifications():
 @min_role_required("STUDENT")
 def stream_notifications():
     user_id = current_user.id
+    client_id = (request.args.get("client_id") or "").strip()[:128] or "default"
     # El request de SSE queda abierto largo tiempo; cerramos cualquier transacción
     # asociada a la sesión scoped de Flask-SQLAlchemy antes de entrar al stream.
     db.session.remove()
 
     @stream_with_context
     def generate():
-        subscription = notification_broker.subscribe(user_id)
+        subscription = notification_broker.subscribe(user_id, client_id)
         try:
             yield sse_pack("connected", {
                 "ok": True,
                 "unread_count": get_unread_count(user_id),
+                "client_id": client_id,
             })
 
             while True:
                 try:
                     event_name, payload = subscription.get(timeout=SSE_HEARTBEAT_SECONDS)
+                    if event_name == "disconnect":
+                        break
                     if event_name:
                         yield sse_pack(event_name, payload)
                 except queue.Empty:
@@ -100,7 +104,7 @@ def stream_notifications():
                 except GeneratorExit:
                     break
         finally:
-            notification_broker.unsubscribe(user_id, subscription)
+            notification_broker.unsubscribe(user_id, client_id, subscription)
             db.session.remove()
 
     response = Response(generate(), mimetype="text/event-stream")
