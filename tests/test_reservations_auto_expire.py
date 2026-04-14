@@ -41,7 +41,7 @@ def test_expire_unapproved_reservations_cancels_only_expired_pending():
 
     assert expired_count == 1
     assert expired.status == ReservationStatus.CANCELLED
-    assert expired.admin_note == "Cancelada por falta de confirmación"
+    assert expired.admin_note == "CANCELADA POR FALTA DE CONFIRMACIÓN"
     assert future.status == ReservationStatus.PENDING
     notification_mock.assert_called_once()
     log_event_mock.assert_called_once()

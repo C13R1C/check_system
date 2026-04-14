@@ -123,7 +123,7 @@
                   <label for="admin-note-{{ r.id }}" style="font-size:.86rem; color:var(--text-dim); font-weight:700;">
                     Nota / motivo de rechazo
                   </label>
-                  <textarea id="admin-note-{{ r.id }}" name="admin_note" rows="3" placeholder="Ej. Falta evidencia, ajuste de horario, observación de aprobación..." class="form-control"></textarea>
+                  <textarea id="admin-note-{{ r.id }}" name="admin_note" rows="3" placeholder="Ej. Falta evidencia, ajuste de horario, observación de aprobación..." class="form-control js-uppercase-safe"></textarea>
                   <div class="reservation-admin-row-actions">
                     <button type="submit" formaction="{{ url_for('reservations.admin_approve', res_id=r.id) }}" class="btn btn-gold">Aprobar</button>
                     <button type="submit" formaction="{{ url_for('reservations.admin_reject', res_id=r.id) }}" class="btn btn-ghost">Rechazar</button>

@@ -8,11 +8,12 @@ from app.models.user import User
 from app.services.audit_service import log_event
 from app.services.notification_service import build_notification, build_reservation_message
 from app.utils.statuses import ReservationStatus
+from app.utils.text import normalize_upper
 
 
 def approve_reservation(reservation: Reservation, admin_user: User, admin_note: str | None = None):
     reservation.status = ReservationStatus.APPROVED
-    reservation.admin_note = (admin_note or "").strip() or None
+    reservation.admin_note = normalize_upper(admin_note) or None
 
     approval_notification = build_notification(
         user_id=reservation.user_id,
@@ -43,7 +44,7 @@ def approve_reservation(reservation: Reservation, admin_user: User, admin_note: 
 
 def reject_reservation(reservation: Reservation, admin_user: User, admin_note: str | None = None):
     reservation.status = ReservationStatus.REJECTED
-    reservation.admin_note = (admin_note or "").strip() or None
+    reservation.admin_note = normalize_upper(admin_note) or None
 
     rejection_notification = build_notification(
         user_id=reservation.user_id,
@@ -75,7 +76,7 @@ def reject_reservation(reservation: Reservation, admin_user: User, admin_note: s
 def expire_unapproved_reservations(now_dt: datetime | None = None) -> int:
     """Auto-cancel pending reservations whose start time has already begun."""
     now = now_dt or datetime.now()
-    cancel_reason = "Cancelada por falta de confirmación"
+    cancel_reason = normalize_upper("Cancelada por falta de confirmación")
 
     pending_reservations = (
         Reservation.query

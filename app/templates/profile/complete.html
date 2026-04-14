@@ -382,7 +382,7 @@
               <input
                 id="full_name"
                 name="full_name"
-                class="always-uppercase"
+                class="always-uppercase js-uppercase-safe"
                 placeholder="Ejemplo: María Fernanda López Díaz"
                 required
               >
@@ -421,7 +421,7 @@
             {% if is_student %}
             <div class="field field-full">
               <label for="career_id">Carrera *</label>
-              <select id="career_id" name="career_id" required>
+              <select id="career_id" name="career_id" class="js-uppercase-safe" required>
                 <option value="">Selecciona una carrera</option>
                 {% for career in careers %}
                 <option value="{{ career.id }}">{{ career.name }}</option>
@@ -433,7 +433,7 @@
             {% if is_professor %}
             <div class="field field-full">
               <label for="career_id">Área de especialización *</label>
-              <select id="career_id" name="career_id" required>
+              <select id="career_id" name="career_id" class="js-uppercase-safe" required>
                 <option value="">Selecciona un área de especialización</option>
                 {% for career in careers %}
                 <option value="{{ career.id }}">{{ career.name }}</option>
@@ -446,7 +446,7 @@
             {% if is_student %}
             <div class="field field-full">
               <label for="academic_level_id">Nivel académico *</label>
-              <select id="academic_level_id" name="academic_level_id" required>
+              <select id="academic_level_id" name="academic_level_id" class="js-uppercase-safe" required>
                 <option value="">Selecciona nivel</option>
                 {% for level in academic_levels %}
                 <option value="{{ level.id }}">{{ level.name }}</option>
@@ -459,6 +459,7 @@
               <input
                 id="group_name"
                 name="group_name"
+                class="js-uppercase-safe"
                 placeholder="Ej. MTMXX / TRM51 / etc."
                 maxlength="80"
                 required
