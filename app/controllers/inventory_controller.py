@@ -110,19 +110,19 @@ def _split_tool_status(status: str | None) -> tuple[str, str]:
     lower_value = normalized.lower()
     if " - " in normalized:
         active_state, condition = [part.strip() for part in normalized.split(" - ", 1)]
-        active_state = "Alta" if active_state.lower().startswith("alta") else "Baja"
-        condition = condition.capitalize()
-        if condition not in {"Bueno", "Regular", "Malo"}:
-            condition = "Bueno"
+        active_state = "ALTA" if active_state.lower().startswith("alta") else "BAJA"
+        condition = condition.upper()
+        if condition not in {"BUENO", "REGULAR", "MALO"}:
+            condition = "BUENO"
         return active_state, condition
 
     if lower_value in {"disponible", "en mantenimiento"}:
-        return "Alta", "Bueno"
+        return "ALTA", "BUENO"
     if lower_value == "frágil":
-        return "Alta", "Regular"
+        return "ALTA", "REGULAR"
     if _is_inactive_status(normalized):
-        return "Baja", "Regular"
-    return "Alta", "Bueno"
+        return "BAJA", "REGULAR"
+    return "ALTA", "BUENO"
 
 
 def _base_inventory_query(*, include_inactive: bool):
@@ -174,18 +174,18 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
     if pieces_qty <= 0:
         return {}, "La cantidad de piezas es obligatoria y debe ser mayor a 0."
 
-    tool_condition = normalize_spaces(request.form.get("tool_condition") or "")
-    active_state = normalize_spaces(request.form.get("active_state") or "")
-    if tool_condition and tool_condition not in {"Bueno", "Regular", "Malo"}:
+    tool_condition = (normalize_spaces(request.form.get("tool_condition") or "") or "").upper()
+    active_state = (normalize_spaces(request.form.get("active_state") or "") or "").upper()
+    if tool_condition and tool_condition not in {"BUENO", "REGULAR", "MALO"}:
         return {}, "Selecciona una condición válida (Bueno, Regular o Malo)."
-    if active_state and active_state not in {"Alta", "Baja"}:
+    if active_state and active_state not in {"ALTA", "BAJA"}:
         return {}, "Selecciona un estado válido (Alta o Baja)."
 
     status = normalize_spaces(request.form.get("status") or "")
     if tool_condition or active_state:
-        status = f"{active_state or 'Alta'} - {tool_condition or 'Bueno'}"
+        status = f"{active_state or 'ALTA'} - {tool_condition or 'BUENO'}"
     if not status:
-        status = material.status if material else "Alta - Bueno"
+        status = material.status if material else "ALTA - BUENO"
     status_change_reason = normalize_upper(request.form.get("status_change_reason")) or ""
     if material is None and _is_inactive_status(status) and not status_change_reason:
         return {}, "Debes capturar el motivo al crear un material en estado de baja."
@@ -240,9 +240,9 @@ def _status_change_reason_requirement(old_status: str | None, new_status: str | 
 
 
 def _status_form_defaults(material: Material | None, form_data: dict) -> tuple[str, str]:
-    active_state = normalize_spaces(form_data.get("active_state") or "")
-    tool_condition = normalize_spaces(form_data.get("tool_condition") or "")
-    if active_state in {"Alta", "Baja"} and tool_condition in {"Bueno", "Regular", "Malo"}:
+    active_state = (normalize_spaces(form_data.get("active_state") or "") or "").upper()
+    tool_condition = (normalize_spaces(form_data.get("tool_condition") or "") or "").upper()
+    if active_state in {"ALTA", "BAJA"} and tool_condition in {"BUENO", "REGULAR", "MALO"}:
         return active_state, tool_condition
     source_status = form_data.get("status") or (material.status if material else None)
     return _split_tool_status(source_status)
