@@ -19,7 +19,7 @@ def _reservation_stub(*, reservation_id: int, start_dt: datetime, status: str = 
     )
 
 
-def test_expire_unapproved_reservations_cancels_only_expired_pending():
+def test_expire_unapproved_reservations_rejects_only_expired_pending():
     now = datetime(2026, 4, 12, 7, 0, 0)
     expired = _reservation_stub(reservation_id=1, start_dt=now - timedelta(minutes=5))
     future = _reservation_stub(reservation_id=2, start_dt=now + timedelta(minutes=30))
@@ -40,7 +40,7 @@ def test_expire_unapproved_reservations_cancels_only_expired_pending():
         expired_count = expire_unapproved_reservations(now_dt=now)
 
     assert expired_count == 1
-    assert expired.status == ReservationStatus.CANCELLED
+    assert expired.status == ReservationStatus.REJECTED
     assert expired.admin_note == "CANCELADA POR FALTA DE CONFIRMACIÓN"
     assert future.status == ReservationStatus.PENDING
     notification_mock.assert_called_once()
