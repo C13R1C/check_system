@@ -28,11 +28,10 @@
 </header>
 
 <section class="stats-row">
-  <article class="stat-card"><span class="stat-label">Laboratorio</span><strong>{{ material.lab.name }}</strong></article>
   <article class="stat-card"><span class="stat-label">Carrera</span><strong>{{ material.career.name if material.career else 'Sin carrera' }}</strong></article>
   <article class="stat-card"><span class="stat-label">Categoría</span><strong>{{ material.category or 'Sin categoría' }}</strong></article>
   <article class="stat-card"><span class="stat-label">Estado</span><strong>{{ material.status | smart_title }}</strong></article>
-  <article class="stat-card"><span class="stat-label">Piezas</span><strong>{{ material.pieces_text }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Piezas disponibles</span><strong>{{ material.pieces_qty if material.pieces_qty is not none else 'Sin registro' }}</strong></article>
 </section>
 
 <section class="table-card" style="margin-bottom:18px;">
@@ -49,8 +48,6 @@
         <tr><td><strong>Ubicación</strong></td><td>{{ material.location | smart_title }}</td></tr>
         <tr><td><strong>Marca</strong></td><td>{{ material.brand or '-' }}</td></tr>
         <tr><td><strong>Modelo</strong></td><td>{{ material.model or '-' }}</td></tr>
-        <tr><td><strong>Código</strong></td><td>{{ material.code or '-' }}</td></tr>
-        <tr><td><strong>Serie</strong></td><td>{{ material.serial or '-' }}</td></tr>
         <tr><td><strong>Observaciones</strong></td><td>{{ material.notes or 'Sin observaciones' }}</td></tr>
         {% if material_image_src %}
           <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>

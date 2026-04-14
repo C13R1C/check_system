@@ -16,6 +16,7 @@ from app.services.audit_service import log_event
 from app.utils.landing import resolve_landing_endpoint
 from app.utils.validators import normalize_and_validate_group_code, normalize_and_validate_phone
 from app.utils.roles import ROLE_TEACHER, ROLE_STUDENT, ROLE_STAFF, normalize_role
+from app.utils.text import normalize_upper
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -393,7 +394,7 @@ def update_basic_profile():
         flash("Solo cuentas ADMIN/SUPERADMIN pueden editar estos datos directamente.", "error")
         return redirect(url_for("profile.my_profile"))
 
-    full_name = (request.form.get("full_name") or "").strip()
+    full_name = normalize_upper(request.form.get("full_name")) or ""
     phone, phone_error = normalize_and_validate_phone(request.form.get("phone"))
 
     if not full_name or not _has_min_real_chars(full_name, minimum=3):
@@ -470,7 +471,7 @@ def complete_profile():
     is_staff = _is_staff_role(current_user.role)
 
     if request.method == "POST":
-        full_name = (request.form.get("full_name") or "").strip()
+        full_name = normalize_upper(request.form.get("full_name")) or ""
         matricula_raw = request.form.get("matricula")
         career_id = request.form.get("career_id", type=int)
         academic_level_id = request.form.get("academic_level_id", type=int)
