@@ -778,6 +778,8 @@ def admin_approved():
     )
 
     for r in approved:
+        r.admin_reviewed = bool(getattr(r, "exit_time", None))
+        r.can_mark_reviewed = False
         open_ticket = next((t for t in r.lab_tickets if (t.status or "").upper() in BLOCKING_LAB_TICKET_STATUSES), None)
         r.open_ticket = open_ticket
 
@@ -803,11 +805,64 @@ def admin_approved():
             r.open_ticket_reason = "available"
             r.operation_state = "EN_PROGRESO"
 
+        r.can_mark_reviewed = r.operation_state == "FINALIZADO" and not r.admin_reviewed
+
     return render_template(
         "reservations/admin_approved.html",
         reservations=approved,
         active_page="reservations"
     )
+
+
+@reservations_bp.route("/admin/<int:res_id>/mark-reviewed", methods=["POST"])
+@min_role_required("ADMIN")
+def admin_mark_reviewed(res_id: int):
+    reservation = Reservation.query.get(res_id)
+    if not reservation:
+        flash("Reservación no encontrada.", "error")
+        return redirect(url_for("reservations.admin_approved"))
+
+    if (reservation.status or "").upper() != ReservationStatus.APPROVED:
+        flash("Solo se pueden revisar reservaciones aprobadas.", "error")
+        return redirect(url_for("reservations.admin_approved"))
+
+    now = datetime.now()
+    end_dt = datetime.combine(reservation.date, reservation.end_time)
+    if now <= end_dt:
+        flash("La reservación aún no termina; no se puede marcar como revisada.", "error")
+        return redirect(url_for("reservations.admin_approved"))
+
+    note = (request.form.get("review_note") or "").strip()
+    if not note:
+        flash("La nota administrativa de devolución es obligatoria.", "error")
+        return redirect(url_for("reservations.admin_approved"))
+
+    review_prefix = f"[REVISIÓN ADMIN {now.strftime('%Y-%m-%d %H:%M')}] "
+    existing_note = (reservation.admin_note or "").strip()
+    review_line = f"{review_prefix}{note}"
+    if existing_note:
+        reservation.admin_note = f"{existing_note}\n{review_line}"
+    else:
+        reservation.admin_note = review_line
+
+    reservation.exit_time = now.time().replace(second=0, microsecond=0)
+    db.session.commit()
+
+    log_event(
+        module="RESERVATIONS",
+        action="RESERVATION_MARK_REVIEWED",
+        user_id=current_user.id,
+        material_id=None,
+        description=f"Reservación #{reservation.id} marcada como revisada por administración.",
+        metadata={
+            "reservation_id": reservation.id,
+            "entity_id": reservation.id,
+            "review_note": note,
+            "reviewed_at": now.isoformat(timespec="seconds"),
+        },
+    )
+    flash("Reservación marcada como revisada.", "ok")
+    return redirect(url_for("reservations.admin_approved"))
 
 
 @reservations_bp.route("/admin/tickets/closure-requests", methods=["GET"])

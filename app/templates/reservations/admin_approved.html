@@ -10,6 +10,27 @@
   </div>
 </header>
 
+<style>
+  .review-cell{
+    min-width: 290px;
+  }
+  .review-form{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .review-form textarea{
+    min-height: 72px;
+    resize: vertical;
+  }
+  .review-note{
+    margin-top: 6px;
+    font-size: .9rem;
+    color: var(--text-dim);
+    white-space: pre-line;
+  }
+</style>
+
 <section class="toolbar-card">
   <div class="toolbar-actions">
     <a class="btn btn-ghost" href="{{ url_for('reservations.admin_queue') }}">
@@ -45,6 +66,7 @@
             <th>Fin</th>
             <th>Motivo</th>
             <th>Estado</th>
+            <th>Seguimiento administrativo</th>
           </tr>
         </thead>
         <tbody>
@@ -61,6 +83,27 @@
               <span class="status-badge {% if r.operation_state == 'FINALIZADO' %}status-neutral{% else %}status-ok{% endif %}">
                 {{ 'Finalizado' if r.operation_state == 'FINALIZADO' else 'En progreso' }}
               </span>
+            </td>
+            <td data-label="Seguimiento administrativo" class="review-cell">
+              {% if r.can_mark_reviewed %}
+                <form method="post" action="{{ url_for('reservations.admin_mark_reviewed', res_id=r.id) }}" class="review-form">
+                  <label for="review_note_{{ r.id }}"><strong>Marcar como revisado</strong></label>
+                  <textarea
+                    id="review_note_{{ r.id }}"
+                    name="review_note"
+                    class="form-control"
+                    required
+                    maxlength="600"
+                    placeholder="Ej: limpio y en orden / con residuos / faltó revisión de equipo / sin novedades"
+                  ></textarea>
+                  <button type="submit" class="btn btn-gold">Marcar como revisado</button>
+                </form>
+              {% elif r.admin_reviewed %}
+                <span class="status-badge status-ok">Revisado</span>
+                <div class="review-note">{{ r.admin_note or 'Sin nota registrada' }}</div>
+              {% else %}
+                <span class="status-badge status-neutral">Pendiente por horario</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
