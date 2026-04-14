@@ -159,7 +159,7 @@ def register():
         inferred_role = infer_role_from_email(email)
         if inferred_role is None:
             flash(
-                "Formato de correo no válido. Usa matrícula@utpn.edu.mx o nombre.apellido@utpn.edu.mx.",
+                "Formato de correo no válido. Usa matrícula numérica (8 dígitos) o una cuenta institucional válida @utpn.edu.mx.",
                 "error",
             )
             return redirect(url_for("auth.auth_page", mode="register"))
@@ -294,7 +294,12 @@ def change_email():
     inferred_role = infer_role_from_email(new_email)
     if inferred_role is None:
         return jsonify(
-            {"error": "Formato de correo no válido. Usa matrícula@utpn.edu.mx o nombre.apellido@utpn.edu.mx."}
+            {
+                "error": (
+                    "Formato de correo no válido. Usa matrícula numérica (8 dígitos) "
+                    "o una cuenta institucional válida @utpn.edu.mx."
+                )
+            }
         ), 400
 
     existing = User.query.filter(User.email == new_email, User.id != user.id).first()

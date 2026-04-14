@@ -122,11 +122,11 @@
 
     const ok = institutionalEmailRe.test(email);
     registerEmail.setCustomValidity(
-      ok ? "" : "Usa matrícula@utpn.edu.mx o nombre.apellido@utpn.edu.mx"
+      ok ? "" : "Usa matrícula numérica (8 dígitos) o cuenta institucional válida @utpn.edu.mx"
     );
     emailRegHint.textContent = ok
       ? "✅ Correo institucional válido."
-      : "❌ Usa matrícula@utpn.edu.mx o nombre.apellido@utpn.edu.mx";
+      : "❌ Usa matrícula numérica (8 dígitos) o cuenta institucional válida @utpn.edu.mx";
     emailRegHint.className = ok ? "hint good" : "hint bad";
     return ok;
   };
