@@ -17,6 +17,9 @@
 </header>
 
 <style>
+.js-uppercase-safe {
+  text-transform: uppercase;
+}
 .datetime-helper {
   display: block;
   margin-top: 6px;
@@ -242,7 +245,7 @@
       {% else %}
         <div class="search-box">
           <i class="ph ph-book search-icon"></i>
-          <input type="text" name="subject" placeholder="Ejemplo: Programación Web" required style="text-transform: uppercase;">
+          <input type="text" name="subject" class="js-uppercase-safe" placeholder="Ejemplo: Programación Web" required>
         </div>
       {% endif %}
     </div>
@@ -320,7 +323,7 @@
 
     <div class="toolbar-group" style="grid-column:1/-1;">
       <label>Motivo (opcional)</label>
-      <textarea class="form-control" name="purpose" rows="3" placeholder="Objetivo de la práctica o actividad"></textarea>
+      <textarea class="form-control js-uppercase-safe" name="purpose" rows="3" placeholder="Objetivo de la práctica o actividad"></textarea>
     </div>
 
     <div class="toolbar-group" style="grid-column:1/-1;">

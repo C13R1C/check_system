@@ -51,7 +51,7 @@ from app.utils.statuses import (
 from app.utils.validators import normalize_and_validate_group_code
 from app.utils.media import resolve_media_url
 from app.constants import ROOMS
-from app.utils.text import lab_room_code_variants, normalize_lab_room_code
+from app.utils.text import lab_room_code_variants, normalize_lab_room_code, normalize_upper
 
 reservations_bp = Blueprint("reservations", __name__, url_prefix="/reservations")
 logger = logging.getLogger(__name__)
@@ -511,14 +511,14 @@ def request_reservation():
                 extra={"user_id": current_user.id, "legacy_fields": sorted(legacy_material_fields)},
             )
 
-        room = (request.form.get("room") or "").strip()
+        room = normalize_upper(request.form.get("room")) or ""
         date_s = (request.form.get("date") or "").strip()
         start_s = (request.form.get("start_time") or "").strip()
         end_s = (request.form.get("end_time") or "").strip()
-        purpose = (request.form.get("purpose") or "").strip()
-        group_name = (request.form.get("group_name") or "").strip()
+        purpose = normalize_upper(request.form.get("purpose")) or ""
+        group_name = normalize_upper(request.form.get("group_name")) or ""
         requester_name = _build_requester_name()
-        subject = (request.form.get("subject") or "").strip().upper()
+        subject = normalize_upper(request.form.get("subject")) or ""
         signature_data = request.form.get("signature_data") or ""
         selected_subject_id = None
 
