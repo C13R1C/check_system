@@ -116,8 +116,16 @@
     transform:rotate(90deg);
   }
   .teacher-load-panel{
-    padding:0 16px 14px;
+    padding:0 16px;
     border-top:1px solid var(--stroke);
+    max-height:0;
+    opacity:0;
+    overflow:hidden;
+    transition:max-height .28s ease, opacity .24s ease, padding .24s ease;
+  }
+  .teacher-load-panel.is-open{
+    padding:0 16px 14px;
+    opacity:1;
   }
 @media (max-width: 980px){
   .profile-phone-form,
@@ -184,6 +192,9 @@
     height:26px;
   }
   .teacher-load-panel{
+    padding:0 12px;
+  }
+  .teacher-load-panel.is-open{
     padding:0 12px 12px;
   }
   .teacher-load-panel .table-wrap{
@@ -406,7 +417,7 @@
         <span class="profile-chip">{{ subject_block.groups|length }} grupos</span>
         <span class="teacher-load-chevron" aria-hidden="true"><i class="ph ph-caret-right"></i></span>
       </button>
-      <div id="{{ panel_id }}" class="teacher-load-panel" role="region" aria-labelledby="{{ trigger_id }}" hidden>
+      <div id="{{ panel_id }}" class="teacher-load-panel" role="region" aria-labelledby="{{ trigger_id }}" aria-hidden="true">
         <div class="toolbar" style="grid-template-columns:1fr 1fr auto auto; margin:10px 0;">
           <form method="post" action="{{ url_for('profile.update_teaching_subject') }}" class="toolbar-group" style="grid-column:1 / span 2;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -492,19 +503,63 @@
 (() => {
   const triggers = Array.from(document.querySelectorAll(".teacher-load-trigger"));
   if (!triggers.length) return;
+  const items = triggers
+    .map((trigger) => {
+      const panelId = trigger.getAttribute("aria-controls");
+      const panel = panelId ? document.getElementById(panelId) : null;
+      if (!panel) return null;
+      return { trigger, panel };
+    })
+    .filter(Boolean);
+
+  const collapsePanel = (trigger, panel) => {
+    if (!trigger || !panel) return;
+    trigger.setAttribute("aria-expanded", "false");
+    panel.setAttribute("aria-hidden", "true");
+    const currentHeight = panel.scrollHeight;
+    panel.style.maxHeight = `${currentHeight}px`;
+    panel.classList.remove("is-open");
+    requestAnimationFrame(() => {
+      panel.style.maxHeight = "0px";
+    });
+  };
+
+  const expandPanel = (trigger, panel) => {
+    if (!trigger || !panel) return;
+    trigger.setAttribute("aria-expanded", "true");
+    panel.setAttribute("aria-hidden", "false");
+    panel.classList.add("is-open");
+    panel.style.maxHeight = `${panel.scrollHeight}px`;
+  };
 
   triggers.forEach((trigger) => {
     const panelId = trigger.getAttribute("aria-controls");
     const panel = panelId ? document.getElementById(panelId) : null;
     if (!panel) return;
+    panel.style.maxHeight = "0px";
 
     const toggle = () => {
       const isExpanded = trigger.getAttribute("aria-expanded") === "true";
-      trigger.setAttribute("aria-expanded", isExpanded ? "false" : "true");
-      panel.hidden = isExpanded;
+      if (isExpanded) {
+        collapsePanel(trigger, panel);
+        return;
+      }
+
+      items.forEach(({ trigger: otherTrigger, panel: otherPanel }) => {
+        if (otherTrigger === trigger) return;
+        collapsePanel(otherTrigger, otherPanel);
+      });
+      expandPanel(trigger, panel);
     };
 
     trigger.addEventListener("click", toggle);
+  });
+
+  window.addEventListener("resize", () => {
+    items.forEach(({ trigger, panel }) => {
+      if (trigger.getAttribute("aria-expanded") !== "true") return;
+      panel.style.maxHeight = `${panel.scrollHeight}px`;
+    });
   });
 })();
 </script>
