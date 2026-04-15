@@ -524,7 +524,7 @@
           <form method="post" action="{{ url_for('profile.remove_teaching_subject') }}" class="toolbar-actions teacher-load-subject-remove-form" onsubmit="return confirm('¿Eliminar materia y todos sus grupos?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="subject_name" value="{{ subject_block.subject_name }}">
-            <button type="submit" class="btn btn-ghost">Eliminar materia</button>
+            <button type="submit" class="btn btn-danger">Eliminar materia</button>
           </form>
         </div>
 
@@ -571,7 +571,7 @@
                 <td>
                   <form method="post" action="{{ url_for('profile.remove_teaching_load', load_id=load.id) }}" class="teacher-load-group-remove-form" onsubmit="return confirm('¿Eliminar este grupo?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-ghost">Quitar</button>
+                    <button type="submit" class="btn btn-danger">Quitar</button>
                   </form>
                 </td>
               </tr>

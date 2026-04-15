@@ -61,7 +61,7 @@
     {% endif %}
     {% if is_admin %}
     <form method="post" action="{{ url_for('forum.toggle_post_hidden', post_id=post.id) }}">
-      <button type="submit" class="btn {% if post.is_hidden %}btn-gold{% else %}btn-ghost{% endif %}">
+      <button type="submit" class="btn {% if post.is_hidden %}btn-gold{% else %}btn-danger{% endif %}">
         {% if post.is_hidden %}Mostrar publicación{% else %}Ocultar publicación{% endif %}
       </button>
     </form>
@@ -95,7 +95,7 @@
       <p style="margin:10px 0 0 0; white-space:pre-wrap; padding:10px 12px; background:rgba(255,255,255,.45); border-radius:10px;">{{ c.content }}</p>
       {% if is_admin %}
         <form method="post" action="{{ url_for('forum.toggle_comment_hidden', comment_id=c.id) }}" style="margin-top:8px;">
-          <button type="submit" class="btn btn-ghost">{% if c.is_hidden %}Mostrar{% else %}Ocultar{% endif %} comentario</button>
+          <button type="submit" class="btn {% if c.is_hidden %}btn-ghost{% else %}btn-danger{% endif %}">{% if c.is_hidden %}Mostrar{% else %}Ocultar{% endif %} comentario</button>
         </form>
       {% endif %}
     </article>
