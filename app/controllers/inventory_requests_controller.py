@@ -240,10 +240,12 @@ def my_daily_request():
     history_meta = {ticket.id: _build_user_ticket_meta(ticket) for ticket in history}
     active_ticket_meta = _build_user_ticket_meta(active_ticket) if active_ticket else None
 
-    materials = (
+    materials_query = (
         Material.query
         .filter(func.lower(func.coalesce(Material.status, "")) != "baja")
-        .filter(Material.career_id == current_user.career_id if _is_student_role(current_user.role) else True)
+    )
+    materials = (
+        Material.apply_visibility_scope(materials_query, current_user)
         .order_by(Material.name.asc())
         .all()
     )
@@ -301,8 +303,11 @@ def add_to_daily_request():
         if (material.status or "").strip().lower() == "baja":
             flash(f"{material.name}: el material está en baja y no se puede solicitar.", "error")
             return redirect(url_for("inventory_requests.my_daily_request"))
-        if _is_student_role(current_user.role) and material.career_id != current_user.career_id:
-            flash(f"{material.name}: no pertenece a tu carrera.", "error")
+        if not Material.apply_visibility_scope(
+            Material.query.filter(Material.id == material.id),
+            current_user,
+        ).first():
+            flash(f"{material.name}: no tienes acceso a este material.", "error")
             return redirect(url_for("inventory_requests.my_daily_request"))
 
         if material.pieces_qty is not None and qty > material.pieces_qty:

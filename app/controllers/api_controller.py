@@ -49,18 +49,19 @@ def _resolve_ra_user(raw_email: str | None) -> tuple[User | None, tuple[dict, in
 
 
 def _can_user_access_ra_material(user: User, material: Material) -> tuple[bool, str | None]:
-    # Reutiliza la misma regla aplicada en Solicitud de material:
-    # el alumno sólo usa materiales de su propia carrera.
-    if normalize_role(user.role) != ROLE_STUDENT:
+    if Material.apply_visibility_scope(
+        Material.query.filter(Material.id == material.id),
+        user,
+    ).first():
         return True, None
 
-    if material.career_id != user.career_id:
+    if normalize_role(user.role) == ROLE_STUDENT:
         return (
             False,
-            "No tienes permitido usar este material porque no pertenece a tu carrera.",
+            "No tienes permitido usar este material por su alcance de visibilidad.",
         )
 
-    return True, None
+    return False, "No tienes permitido usar este material."
 
 
 def material_to_dict(m: Material) -> dict:
@@ -80,6 +81,8 @@ def material_to_dict(m: Material) -> dict:
         "image_ref": m.image_ref,
         "tutorial_url": m.tutorial_url,
         "notes": m.notes,
+        "access_scope": m.normalized_access_scope,
+        "assignment": m.display_assignment,
     }
 
 
@@ -101,6 +104,8 @@ def ra_material_to_dict(m: Material) -> dict:
         "image_ref": m.image_ref,
         "image_url": resolve_media_url(m.image_ref, ensure_static_file=True),
         "notes": m.notes,
+        "access_scope": m.normalized_access_scope,
+        "assignment": m.display_assignment,
     }
 
 

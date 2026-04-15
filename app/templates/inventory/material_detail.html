@@ -28,7 +28,7 @@
 </header>
 
 <section class="stats-row">
-  <article class="stat-card"><span class="stat-label">Carrera</span><strong>{{ material.career.name if material.career else 'Sin carrera' }}</strong></article>
+  <article class="stat-card"><span class="stat-label">Asignación / acceso</span><strong>{{ material.display_assignment }}</strong></article>
   <article class="stat-card"><span class="stat-label">Categoría</span><strong>{{ material.category or 'Sin categoría' }}</strong></article>
   <article class="stat-card"><span class="stat-label">Estado</span><strong>{{ (material.status or 'SIN ESTADO') | upper }}</strong></article>
   <article class="stat-card"><span class="stat-label">Piezas disponibles</span><strong>{{ material.pieces_qty if material.pieces_qty is not none else 'Sin registro' }}</strong></article>
