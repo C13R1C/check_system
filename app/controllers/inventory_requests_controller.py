@@ -303,10 +303,7 @@ def add_to_daily_request():
         if (material.status or "").strip().lower() == "baja":
             flash(f"{material.name}: el material está en baja y no se puede solicitar.", "error")
             return redirect(url_for("inventory_requests.my_daily_request"))
-        if not Material.apply_visibility_scope(
-            Material.query.filter(Material.id == material.id),
-            current_user,
-        ).first():
+        if not Material.user_can_access(material, current_user):
             flash(f"{material.name}: no tienes acceso a este material.", "error")
             return redirect(url_for("inventory_requests.my_daily_request"))
 

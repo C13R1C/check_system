@@ -87,5 +87,29 @@ class Material(db.Model):
             )
         )
 
+    @classmethod
+    def apply_career_filter(cls, query, career_id: int | None):
+        if not career_id:
+            return query
+        return query.filter(
+            and_(
+                cls.access_scope == ACCESS_SCOPE_CAREER,
+                cls.career_id == career_id,
+            )
+        )
+
+    @classmethod
+    def user_can_access(cls, material: "Material | None", user) -> bool:
+        if material is None:
+            return False
+        if normalize_role(getattr(user, "role", None)) != ROLE_STUDENT:
+            return True
+        if material.normalized_access_scope == ACCESS_SCOPE_GENERAL:
+            return True
+        if material.normalized_access_scope == ACCESS_SCOPE_CAREER:
+            user_career_id = getattr(user, "career_id", None)
+            return bool(user_career_id) and material.career_id == user_career_id
+        return False
+
     def __repr__(self) -> str:
         return f"<Material {self.id} {self.name}>"

@@ -285,8 +285,7 @@ def inventory_list():
     query = _apply_student_career_scope(query)
     if lab_id:
         query = query.filter(Material.lab_id == lab_id)
-    if career_id:
-        query = query.filter(Material.career_id == career_id)
+    query = Material.apply_career_filter(query, career_id)
     if category:
         query = query.filter(func.upper(func.coalesce(Material.category, "")) == category)
 
@@ -341,12 +340,8 @@ def material_detail(material_id: int):
     if _is_inactive_status(m.status) and not is_admin_role(current_user.role):
         flash("Este material no está disponible para consulta pública.", "warning")
         return redirect(url_for("inventory.inventory_list"))
-    scoped_material = Material.apply_visibility_scope(
-        Material.query.filter(Material.id == material_id),
-        current_user,
-    ).first()
-    if not scoped_material:
-        flash("No tienes acceso a materiales de otra carrera.", "error")
+    if not Material.user_can_access(m, current_user):
+        flash("No tienes acceso a este material por su visibilidad.", "error")
         return redirect(url_for("inventory.inventory_list"))
     return render_template(
         "inventory/material_detail.html",

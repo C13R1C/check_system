@@ -49,10 +49,7 @@ def _resolve_ra_user(raw_email: str | None) -> tuple[User | None, tuple[dict, in
 
 
 def _can_user_access_ra_material(user: User, material: Material) -> tuple[bool, str | None]:
-    if Material.apply_visibility_scope(
-        Material.query.filter(Material.id == material.id),
-        user,
-    ).first():
+    if Material.user_can_access(material, user):
         return True, None
 
     if normalize_role(user.role) == ROLE_STUDENT:
