@@ -703,19 +703,25 @@ def complete_profile():
         phone = (request.form.get("phone") or "").strip()
         group_name_raw = request.form.get("group_name")
         confirm_data = request.form.get("confirm_data") == "1"
+        submitted_institutional_email = (request.form.get("institutional_email") or current_user.email or "").strip()
 
         if not full_name or not _has_min_real_chars(full_name, minimum=3):
             flash("El nombre completo es obligatorio y debe tener al menos 3 caracteres reales.")
             return redirect(url_for("profile.complete_profile"))
 
-        phone_normalized, phone_error = normalize_and_validate_phone(phone)
-        if phone_error:
-            flash(phone_error)
-            return redirect(url_for("profile.complete_profile"))
+        phone_normalized = None
+        if not is_professor:
+            phone_normalized, phone_error = normalize_and_validate_phone(phone)
+            if phone_error:
+                flash(phone_error)
+                return redirect(url_for("profile.complete_profile"))
 
-        institutional_email, institutional_email_error = _normalize_and_validate_utpn_email(current_user.email)
+        institutional_email, institutional_email_error = _normalize_and_validate_utpn_email(submitted_institutional_email)
         if (is_professor or is_staff) and institutional_email_error:
             flash(institutional_email_error)
+            return redirect(url_for("profile.complete_profile"))
+        if (is_professor or is_staff) and institutional_email != (current_user.email or "").strip().lower():
+            flash("El correo institucional no coincide con tu cuenta actual.")
             return redirect(url_for("profile.complete_profile"))
 
         matricula, matricula_error = _normalize_and_validate_matricula(
@@ -777,7 +783,8 @@ def complete_profile():
                 return redirect(url_for("profile.complete_profile"))
 
         current_user.full_name = full_name
-        current_user.phone = phone_normalized
+        if not is_professor:
+            current_user.phone = phone_normalized
 
         if is_student:
             current_user.matricula = matricula

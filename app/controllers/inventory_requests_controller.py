@@ -18,6 +18,7 @@ from app.utils.authz import min_role_required
 from app.utils.roles import ROLE_STUDENT, is_admin_role, normalize_role
 from app.utils.statuses import DebtStatus, InventoryRequestStatus
 from app.utils.text import normalize_upper
+from app.utils.media import resolve_media_url
 
 
 inventory_requests_bp = Blueprint("inventory_requests", __name__, url_prefix="/inventory-requests")
@@ -88,6 +89,16 @@ def _build_user_ticket_meta(ticket: InventoryRequestTicket) -> dict[str, str | b
         "closed_with_debt": closed_with_debt,
     }
 
+
+
+
+def _material_image_src(material: Material | None) -> str | None:
+    if material is None:
+        return None
+    image_url = resolve_media_url(material.image_url, ensure_static_file=True)
+    if image_url:
+        return image_url
+    return resolve_media_url(material.image_ref, ensure_static_file=True)
 
 def _is_student_role(role: str | None) -> bool:
     return normalize_role(role) == ROLE_STUDENT
@@ -440,12 +451,18 @@ def admin_ticket_detail(ticket_id: int):
         flash("Solicitud no encontrada.", "error")
         return redirect(url_for("inventory_requests.admin_daily_requests"))
 
+    material_image_map = {
+        item.id: _material_image_src(item.material)
+        for item in (ticket.items or [])
+    }
+
     return render_template(
         "inventory_requests/admin_detail.html",
         ticket=ticket,
         ticket_base_reason=_extract_ticket_base_reason(ticket.notes),
         rejected_reason=_extract_ticket_marker_text(ticket.notes, REJECTED_MARKER),
         partial_delivery_note=_extract_ticket_marker_text(ticket.notes, PARTIAL_DELIVERY_NOTE_MARKER),
+        material_image_map=material_image_map,
         active_page="inventory_requests",
     )
 
