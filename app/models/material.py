@@ -1,4 +1,16 @@
 from app.extensions import db
+from app.utils.roles import ROLE_STUDENT, normalize_role
+from sqlalchemy import and_, or_
+
+
+ACCESS_SCOPE_CAREER = "CAREER"
+ACCESS_SCOPE_GENERAL = "GENERAL"
+ACCESS_SCOPE_PRIVATE = "PRIVATE"
+ALLOWED_ACCESS_SCOPES = {
+    ACCESS_SCOPE_CAREER,
+    ACCESS_SCOPE_GENERAL,
+    ACCESS_SCOPE_PRIVATE,
+}
 
 
 class Material(db.Model):
@@ -11,6 +23,7 @@ class Material(db.Model):
     lab = db.relationship("Lab", backref="materials")
     career_id = db.Column(db.Integer, db.ForeignKey("careers.id"), nullable=True)
     career = db.relationship("Career", backref="materials")
+    access_scope = db.Column(db.String(20), nullable=False, default=ACCESS_SCOPE_CAREER, server_default=ACCESS_SCOPE_CAREER)
 
     # Datos base (lo que aparece en Excel)
     name = db.Column(db.Text, nullable=False)             # Equipo / Material
@@ -42,6 +55,61 @@ class Material(db.Model):
 
     created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+
+    @property
+    def normalized_access_scope(self) -> str:
+        scope = (self.access_scope or ACCESS_SCOPE_CAREER).strip().upper()
+        return scope if scope in ALLOWED_ACCESS_SCOPES else ACCESS_SCOPE_CAREER
+
+    @property
+    def display_assignment(self) -> str:
+        if self.normalized_access_scope == ACCESS_SCOPE_GENERAL:
+            return "General"
+        if self.normalized_access_scope == ACCESS_SCOPE_PRIVATE:
+            return "Privado"
+        if self.career and self.career.name:
+            return f"Carrera: {self.career.name}"
+        return "Carrera: Sin carrera"
+
+    @classmethod
+    def apply_visibility_scope(cls, query, user):
+        if normalize_role(getattr(user, "role", None)) != ROLE_STUDENT:
+            return query
+        if not getattr(user, "career_id", None):
+            return query.filter(cls.id == -1)
+        return query.filter(
+            or_(
+                cls.access_scope == ACCESS_SCOPE_GENERAL,
+                and_(
+                    cls.access_scope == ACCESS_SCOPE_CAREER,
+                    cls.career_id == user.career_id,
+                ),
+            )
+        )
+
+    @classmethod
+    def apply_career_filter(cls, query, career_id: int | None):
+        if not career_id:
+            return query
+        return query.filter(
+            and_(
+                cls.access_scope == ACCESS_SCOPE_CAREER,
+                cls.career_id == career_id,
+            )
+        )
+
+    @classmethod
+    def user_can_access(cls, material: "Material | None", user) -> bool:
+        if material is None:
+            return False
+        if normalize_role(getattr(user, "role", None)) != ROLE_STUDENT:
+            return True
+        if material.normalized_access_scope == ACCESS_SCOPE_GENERAL:
+            return True
+        if material.normalized_access_scope == ACCESS_SCOPE_CAREER:
+            user_career_id = getattr(user, "career_id", None)
+            return bool(user_career_id) and material.career_id == user_career_id
+        return False
 
     def __repr__(self) -> str:
         return f"<Material {self.id} {self.name}>"

@@ -49,14 +49,25 @@
       <label for="name">Nombre</label>
       <div class="search-box"><input id="name" name="name" class="js-uppercase-safe" required value="{{ data.get('name', material.name if material else '') }}"></div>
     </div>
+    {% set selected_assignment = data.get('career_visibility', '') %}
+    {% if not selected_assignment and material %}
+      {% if material.normalized_access_scope == 'GENERAL' %}
+        {% set selected_assignment = 'GENERAL' %}
+      {% elif material.normalized_access_scope == 'PRIVATE' %}
+        {% set selected_assignment = 'PRIVATE' %}
+      {% else %}
+        {% set selected_assignment = (material.career_id or '') | string %}
+      {% endif %}
+    {% endif %}
     <div class="toolbar-group">
-      <label for="career_id">Carrera</label>
+      <label for="career_visibility">Carrera / visibilidad</label>
       <div class="select-wrap">
-        <select id="career_id" name="career_id" required>
-          <option value="">Selecciona una carrera</option>
+        <select id="career_visibility" name="career_visibility" required>
+          <option value="">Selecciona una opción</option>
+          <option value="GENERAL" {% if selected_assignment == 'GENERAL' %}selected{% endif %}>General</option>
+          <option value="PRIVATE" {% if selected_assignment == 'PRIVATE' %}selected{% endif %}>Privado (solo staff/admin)</option>
           {% for career in careers %}
-          {% set selected_career = data.get('career_id', material.career_id if material else '')|string %}
-          <option value="{{ career.id }}" {% if selected_career == career.id|string %}selected{% endif %}>{{ career.name }}</option>
+          <option value="{{ career.id }}" {% if selected_assignment == career.id|string %}selected{% endif %}>Carrera: {{ career.name }}</option>
           {% endfor %}
         </select>
       </div>

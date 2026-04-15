@@ -328,8 +328,7 @@ def build_inventory_rows(lab_id=None, status=None, search=None, category=None):
     career_id = request.args.get("career_id", type=int)
     if lab_id:
         q = q.filter(Material.lab_id == lab_id)
-    if career_id:
-        q = q.filter(Material.career_id == career_id)
+    q = Material.apply_career_filter(q, career_id)
     if status:
         q = q.filter(Material.status == status)
     if search:
