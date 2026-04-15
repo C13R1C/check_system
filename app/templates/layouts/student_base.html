@@ -1173,10 +1173,35 @@
         });
       });
 
-      logoToggle.addEventListener("click", () => {
+      function closeNotificationCenter() {
+        center.classList.remove("is-open");
+      }
+
+      function isSidebarOpen() {
+        if (window.coyolabsSidebar && typeof window.coyolabsSidebar.isOpen === "function") {
+          return !!window.coyolabsSidebar.isOpen();
+        }
+        return !document.getElementById("sidebar")?.classList.contains("collapsed");
+      }
+
+      function toggleNotificationCenterWhenSidebarOpen() {
+        if (!isSidebarOpen()) {
+          closeNotificationCenter();
+          return;
+        }
         const willOpen = !center.classList.contains("is-open");
-        center.classList.toggle("is-open");
+        center.classList.toggle("is-open", willOpen);
         if (willOpen) markAllNotificationsRead();
+      }
+
+      logoToggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (window.coyolabsSidebar && typeof window.coyolabsSidebar.toggleFromLogo === "function") {
+          window.coyolabsSidebar.toggleFromLogo();
+          toggleNotificationCenterWhenSidebarOpen();
+          return;
+        }
+        toggleNotificationCenterWhenSidebarOpen();
       });
       markAllBtn.addEventListener("click", () => {
         markAllNotificationsRead();
@@ -1185,7 +1210,7 @@
         clearReadNotifications();
       });
       document.addEventListener("click", (evt) => {
-        if (!evt.target.closest(".brand")) center.classList.remove("is-open");
+        if (!evt.target.closest(".brand")) closeNotificationCenter();
       });
       document.addEventListener("click", (evt) => {
         const link = evt.target.closest("a[href]");
@@ -1198,6 +1223,12 @@
       document.addEventListener("submit", () => {
         stopNotificationRealtime();
       }, true);
+
+      window.addEventListener("coyolabs:sidebar-state", (event) => {
+        if (!event?.detail?.open) {
+          closeNotificationCenter();
+        }
+      });
 
       loadInitialFeed();
       if (pushEnableButtons.length) {

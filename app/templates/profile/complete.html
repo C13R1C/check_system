@@ -412,6 +412,8 @@
                 name="institutional_email"
                 type="email"
                 value="{{ current_user.email or '' }}"
+                autocomplete="email"
+                required
                 readonly
               >
               <span class="field-hint">Debe pertenecer al dominio @utpn.edu.mx.</span>
@@ -467,6 +469,7 @@
             </div>
             {% endif %}
 
+            {% if not is_professor %}
             <div class="field field-full">
               <label for="phone">Teléfono *</label>
               <input
@@ -476,6 +479,7 @@
                 required
               >
             </div>
+            {% endif %}
           </div>
 
           <div class="confirm-box">
