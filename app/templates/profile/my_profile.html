@@ -302,16 +302,16 @@
 <section class="table-card" style="margin-top:16px;">
   <div class="profile-section-title">
     <h3 style="margin:0;">Carga académica</h3>
-    <span class="profile-chip">{{ teacher_loads|length }} asignaciones</span>
+    <span class="profile-chip">{{ teacher_subject_blocks|length }} materias · {{ teacher_loads|length }} grupos</span>
   </div>
   <p style="margin:0 0 12px 0; color:var(--text-dim);">
-    Captura materia y grupo manualmente para agregar tu asignación. No se permiten duplicados de la misma materia y grupo.
+    Administra tu carga por materia y grupos. La reservación usará esta jerarquía para mostrar grupos según la materia elegida.
   </p>
 
   <form method="post" action="{{ url_for('profile.add_teaching_load') }}" class="toolbar profile-add-load-form" style="grid-template-columns: 1.2fr .8fr auto; margin-top:12px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="toolbar-group">
-      <label>Materia</label>
+      <label>Nueva materia</label>
       <div class="search-box">
         <i class="ph ph-book-open search-icon"></i>
         <input type="text" name="subject_name" placeholder="Ej.: Programación Web" maxlength="160" required class="always-uppercase js-uppercase-safe">
@@ -319,45 +319,99 @@
     </div>
 
     <div class="toolbar-group">
-      <label>Grupo (en mayúsculas)</label>
+      <label>Primer grupo</label>
       <div class="search-box">
         <i class="ph ph-users search-icon"></i>
         <input type="text" name="group_code" placeholder="Ej.: 3A" required class="always-uppercase js-uppercase-safe">
       </div>
     </div>
 
-  <div class="toolbar-actions" style="align-self:end;">
-      <button type="submit" class="btn btn-gold">Agregar asignación</button>
+    <div class="toolbar-actions" style="align-self:end;">
+      <button type="submit" class="btn btn-gold">Agregar materia</button>
     </div>
   </form>
 
-  {% if teacher_loads %}
-  <div class="table-wrap" style="margin-top:12px;">
-    <table class="inventory-table" style="min-width: 860px;">
-      <thead>
-        <tr>
-          <th>Materia</th>
-          <th>Grupo</th>
-          <th>Registro</th>
-          <th>Acción</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for load in teacher_loads %}
-        <tr>
-          <td>{{ load.subject_name or (load.subject.name if load.subject else '-') }}</td>
-          <td>{{ load.group_code }}</td>
-          <td>{{ load.created_at.strftime('%Y-%m-%d') if load.created_at else '-' }}</td>
-          <td>
-            <form method="post" action="{{ url_for('profile.remove_teaching_load', load_id=load.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="btn btn-ghost">Quitar</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if teacher_subject_blocks %}
+  <div style="display:grid; gap:14px; margin-top:12px;">
+    {% for subject_block in teacher_subject_blocks %}
+    <article class="table-card" style="margin:0;">
+      <div class="profile-section-title" style="margin-bottom:8px;">
+        <h4 style="margin:0;">{{ subject_block.subject_name }}</h4>
+        <span class="profile-chip">{{ subject_block.groups|length }} grupos</span>
+      </div>
+      <div class="toolbar" style="grid-template-columns:1fr 1fr auto auto; margin-bottom:10px;">
+        <form method="post" action="{{ url_for('profile.update_teaching_subject') }}" class="toolbar-group" style="grid-column:1 / span 2;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="subject_name" value="{{ subject_block.subject_name }}">
+          <label>Editar materia</label>
+          <div class="search-box">
+            <i class="ph ph-pencil-simple search-icon"></i>
+            <input type="text" name="new_subject_name" value="{{ subject_block.subject_name }}" maxlength="160" required class="always-uppercase js-uppercase-safe">
+          </div>
+          <div class="toolbar-actions" style="margin-top:8px;">
+            <button type="submit" class="btn btn-ghost">Guardar materia</button>
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('profile.remove_teaching_subject') }}" class="toolbar-actions" style="align-self:end;" onsubmit="return confirm('¿Eliminar materia y todos sus grupos?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="subject_name" value="{{ subject_block.subject_name }}">
+          <button type="submit" class="btn btn-ghost">Eliminar materia</button>
+        </form>
+      </div>
+
+      <form id="{{ 'addGroupForm' ~ loop.index }}" method="post" action="{{ url_for('profile.add_teaching_group') }}" class="toolbar" style="grid-template-columns:1fr auto; margin-bottom:10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="subject_name" value="{{ subject_block.subject_name }}">
+        <div class="toolbar-group">
+          <label>Nuevo grupo para {{ subject_block.subject_name }}</label>
+          <div class="search-box">
+            <i class="ph ph-users search-icon"></i>
+            <input type="text" name="group_code" placeholder="Ej.: 3B" required class="always-uppercase js-uppercase-safe">
+          </div>
+        </div>
+        <div class="toolbar-actions" style="align-self:end;">
+          <button type="submit" class="btn btn-gold">Agregar grupo</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table class="inventory-table" style="min-width:560px;">
+          <thead>
+            <tr>
+              <th>Grupo</th>
+              <th>Registro</th>
+              <th>Editar</th>
+              <th>Eliminar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for load in subject_block.groups %}
+            <tr>
+              <td>{{ load.group_code }}</td>
+              <td>{{ load.created_at.strftime('%Y-%m-%d') if load.created_at else '-' }}</td>
+              <td>
+                <form method="post" action="{{ url_for('profile.update_teaching_group', load_id=load.id) }}" class="toolbar" style="grid-template-columns:1fr auto;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <div class="search-box">
+                    <i class="ph ph-pencil-simple search-icon"></i>
+                    <input type="text" name="group_code" value="{{ load.group_code }}" required class="always-uppercase js-uppercase-safe">
+                  </div>
+                  <button type="submit" class="btn btn-ghost">Guardar</button>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('profile.remove_teaching_load', load_id=load.id) }}" onsubmit="return confirm('¿Eliminar este grupo?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-ghost">Quitar</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+    {% endfor %}
   </div>
   {% else %}
     <p style="margin-top:10px;">Aún no registras materias ni grupos.</p>
