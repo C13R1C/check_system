@@ -220,7 +220,7 @@
     <form method="post" action="{{ url_for('inventory_requests.admin_reject_ticket', ticket_id=ticket.id) }}" style="display:grid; gap:8px;">
       <textarea name="reject_reason" rows="2" class="form-control js-uppercase-safe" placeholder="Motivo de rechazo (obligatorio)" required></textarea>
       <div class="toolbar-actions" style="justify-content:flex-end;">
-        <button type="submit" class="btn btn-ghost">Rechazar solicitud</button>
+        <button type="submit" class="btn btn-danger">Rechazar solicitud</button>
       </div>
     </form>
   </div>
