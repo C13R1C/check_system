@@ -85,6 +85,38 @@ def _extract_matricula_from_email(email: str | None) -> str | None:
     return None
 
 
+def _normalize_subject_name(raw_subject_name: str | None) -> tuple[str | None, str | None]:
+    subject_name = " ".join((raw_subject_name or "").strip().split()).upper()
+    if not subject_name:
+        return None, "La materia es obligatoria."
+    if len(subject_name) > 160:
+        return None, "La materia no puede exceder 160 caracteres."
+    return subject_name, None
+
+
+def _build_teacher_subject_blocks(loads: list[TeacherAcademicLoad]) -> list[dict]:
+    grouped: dict[str, list[TeacherAcademicLoad]] = {}
+    for load in loads:
+        subject_name = (load.subject_name or "").strip().upper()
+        if not subject_name:
+            continue
+        grouped.setdefault(subject_name, []).append(load)
+
+    blocks: list[dict] = []
+    for subject_name in sorted(grouped.keys()):
+        groups = sorted(
+            grouped[subject_name],
+            key=lambda item: ((item.group_code or "").upper(), item.id),
+        )
+        blocks.append(
+            {
+                "subject_name": subject_name,
+                "groups": groups,
+            }
+        )
+    return blocks
+
+
 def _normalize_and_validate_utpn_email(email: str | None) -> tuple[str | None, str | None]:
     normalized = (email or "").strip().lower()
     if not normalized:
@@ -144,14 +176,16 @@ def my_profile():
     )
 
     teacher_loads = []
+    teacher_subject_blocks = []
     if _is_professor_role(current_user.role):
         teacher_loads = (
             TeacherAcademicLoad.query
             .options(joinedload(TeacherAcademicLoad.subject))
             .filter(TeacherAcademicLoad.teacher_id == current_user.id)
-            .order_by(TeacherAcademicLoad.group_code.asc())
+            .order_by(func.upper(TeacherAcademicLoad.subject_name).asc(), TeacherAcademicLoad.group_code.asc())
             .all()
         )
+        teacher_subject_blocks = _build_teacher_subject_blocks(teacher_loads)
 
     return render_template(
         "profile/my_profile.html",
@@ -161,6 +195,7 @@ def my_profile():
         active_page="profile",
         is_professor=_is_professor_role(current_user.role),
         teacher_loads=teacher_loads,
+        teacher_subject_blocks=teacher_subject_blocks,
     )
 
 
@@ -171,21 +206,17 @@ def add_teaching_load():
         flash("Solo profesores pueden gestionar carga académica.", "error")
         return redirect(url_for("profile.my_profile"))
 
-    subject_name = (request.form.get("subject_name") or "").strip()
+    normalized_subject_name, subject_error = _normalize_subject_name(request.form.get("subject_name"))
     group_code, group_error = normalize_and_validate_group_code(request.form.get("group_code"))
 
-    if not subject_name:
-        flash("La materia es obligatoria.", "error")
-        return redirect(url_for("profile.my_profile"))
-    if len(subject_name) > 160:
-        flash("La materia no puede exceder 160 caracteres.", "error")
+    if subject_error:
+        flash(subject_error, "error")
         return redirect(url_for("profile.my_profile"))
 
     if group_error:
         flash(group_error, "error")
         return redirect(url_for("profile.my_profile"))
 
-    normalized_subject_name = " ".join(subject_name.split()).upper()
     existing = (
         TeacherAcademicLoad.query
         .filter(TeacherAcademicLoad.teacher_id == current_user.id)
@@ -215,6 +246,200 @@ def add_teaching_load():
     db.session.commit()
 
     flash("Carga académica agregada.", "success")
+    return redirect(url_for("profile.my_profile"))
+
+
+@profile_bp.route("/teaching-load/subject/update", methods=["POST"])
+@login_required
+def update_teaching_subject():
+    if not _is_professor_role(current_user.role):
+        flash("Solo profesores pueden gestionar carga académica.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    subject_name, subject_error = _normalize_subject_name(request.form.get("subject_name"))
+    new_subject_name, new_subject_error = _normalize_subject_name(request.form.get("new_subject_name"))
+    if subject_error:
+        flash(subject_error, "error")
+        return redirect(url_for("profile.my_profile"))
+    if new_subject_error:
+        flash(new_subject_error, "error")
+        return redirect(url_for("profile.my_profile"))
+
+    subject_loads = (
+        TeacherAcademicLoad.query
+        .filter(TeacherAcademicLoad.teacher_id == current_user.id)
+        .filter(func.upper(TeacherAcademicLoad.subject_name) == subject_name)
+        .all()
+    )
+    if not subject_loads:
+        flash("No se encontró la materia seleccionada.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    for load in subject_loads:
+        duplicate = (
+            TeacherAcademicLoad.query
+            .filter(TeacherAcademicLoad.teacher_id == current_user.id)
+            .filter(func.upper(TeacherAcademicLoad.subject_name) == new_subject_name)
+            .filter(TeacherAcademicLoad.group_code == load.group_code)
+            .first()
+        )
+        if duplicate and duplicate.id != load.id:
+            flash(
+                f"No se puede renombrar: ya existe {new_subject_name} con grupo {load.group_code}.",
+                "error",
+            )
+            return redirect(url_for("profile.my_profile"))
+
+    for load in subject_loads:
+        load.subject_name = new_subject_name
+
+    db.session.commit()
+    log_event(
+        module="PROFILE",
+        action="TEACHING_SUBJECT_UPDATED",
+        user_id=current_user.id,
+        entity_label=f"Teacher #{current_user.id}",
+        description=f"Materia actualizada: {subject_name} → {new_subject_name}",
+        metadata={"subject_name": subject_name, "new_subject_name": new_subject_name, "groups_count": len(subject_loads)},
+    )
+    db.session.commit()
+
+    flash("Materia actualizada.", "success")
+    return redirect(url_for("profile.my_profile"))
+
+
+@profile_bp.route("/teaching-load/subject/remove", methods=["POST"])
+@login_required
+def remove_teaching_subject():
+    if not _is_professor_role(current_user.role):
+        flash("Solo profesores pueden gestionar carga académica.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    subject_name, subject_error = _normalize_subject_name(request.form.get("subject_name"))
+    if subject_error:
+        flash(subject_error, "error")
+        return redirect(url_for("profile.my_profile"))
+
+    subject_loads = (
+        TeacherAcademicLoad.query
+        .filter(TeacherAcademicLoad.teacher_id == current_user.id)
+        .filter(func.upper(TeacherAcademicLoad.subject_name) == subject_name)
+        .all()
+    )
+    if not subject_loads:
+        flash("No se encontró la materia seleccionada.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    removed_groups = [load.group_code for load in subject_loads]
+    for load in subject_loads:
+        db.session.delete(load)
+
+    db.session.commit()
+    log_event(
+        module="PROFILE",
+        action="TEACHING_SUBJECT_REMOVED",
+        user_id=current_user.id,
+        entity_label=f"Teacher #{current_user.id}",
+        description=f"Materia eliminada: {subject_name}",
+        metadata={"subject_name": subject_name, "groups": removed_groups},
+    )
+    db.session.commit()
+
+    flash("Materia y grupos eliminados.", "success")
+    return redirect(url_for("profile.my_profile"))
+
+
+@profile_bp.route("/teaching-load/group/add", methods=["POST"])
+@login_required
+def add_teaching_group():
+    if not _is_professor_role(current_user.role):
+        flash("Solo profesores pueden gestionar carga académica.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    normalized_subject_name, subject_error = _normalize_subject_name(request.form.get("subject_name"))
+    group_code, group_error = normalize_and_validate_group_code(request.form.get("group_code"))
+    if subject_error:
+        flash(subject_error, "error")
+        return redirect(url_for("profile.my_profile"))
+    if group_error:
+        flash(group_error, "error")
+        return redirect(url_for("profile.my_profile"))
+
+    existing = (
+        TeacherAcademicLoad.query
+        .filter(TeacherAcademicLoad.teacher_id == current_user.id)
+        .filter(func.upper(TeacherAcademicLoad.subject_name) == normalized_subject_name)
+        .filter(TeacherAcademicLoad.group_code == (group_code or "").upper())
+        .first()
+    )
+    if existing:
+        flash("Ese grupo ya está registrado para la materia seleccionada.", "warning")
+        return redirect(url_for("profile.my_profile"))
+
+    load = TeacherAcademicLoad(
+        teacher_id=current_user.id,
+        subject_name=normalized_subject_name,
+        group_code=(group_code or "").upper(),
+    )
+    db.session.add(load)
+    db.session.commit()
+    log_event(
+        module="PROFILE",
+        action="TEACHING_GROUP_ADDED",
+        user_id=current_user.id,
+        entity_label=f"TeacherLoad #{load.id}",
+        description=f"Grupo agregado: {normalized_subject_name} · {load.group_code}",
+        metadata={"load_id": load.id, "subject_name": normalized_subject_name, "group_code": load.group_code},
+    )
+    db.session.commit()
+
+    flash("Grupo agregado a la materia.", "success")
+    return redirect(url_for("profile.my_profile"))
+
+
+@profile_bp.route("/teaching-load/group/<int:load_id>/update", methods=["POST"])
+@login_required
+def update_teaching_group(load_id: int):
+    if not _is_professor_role(current_user.role):
+        flash("Solo profesores pueden gestionar carga académica.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    load = TeacherAcademicLoad.query.get_or_404(load_id)
+    if load.teacher_id != current_user.id:
+        flash("No autorizado.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    new_group_code, group_error = normalize_and_validate_group_code(request.form.get("group_code"))
+    if group_error:
+        flash(group_error, "error")
+        return redirect(url_for("profile.my_profile"))
+
+    new_group_code = (new_group_code or "").upper()
+    duplicate = (
+        TeacherAcademicLoad.query
+        .filter(TeacherAcademicLoad.teacher_id == current_user.id)
+        .filter(func.upper(TeacherAcademicLoad.subject_name) == (load.subject_name or "").upper())
+        .filter(TeacherAcademicLoad.group_code == new_group_code)
+        .first()
+    )
+    if duplicate and duplicate.id != load.id:
+        flash("Ese grupo ya existe para la materia seleccionada.", "error")
+        return redirect(url_for("profile.my_profile"))
+
+    old_group_code = load.group_code
+    load.group_code = new_group_code
+    db.session.commit()
+    log_event(
+        module="PROFILE",
+        action="TEACHING_GROUP_UPDATED",
+        user_id=current_user.id,
+        entity_label=f"TeacherLoad #{load.id}",
+        description=f"Grupo actualizado: {load.subject_name} · {old_group_code} → {new_group_code}",
+        metadata={"load_id": load.id, "subject_name": load.subject_name, "old_group_code": old_group_code, "new_group_code": new_group_code},
+    )
+    db.session.commit()
+
+    flash("Grupo actualizado.", "success")
     return redirect(url_for("profile.my_profile"))
 
 

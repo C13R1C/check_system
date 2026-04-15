@@ -40,7 +40,7 @@
         item.brand or '',
         item.model or '',
         item.status or '',
-        (item.career.name if item.career else ''),
+        (item.display_assignment or ''),
       ] | join(' ') %}
       <article class="mini-item" data-search-item data-search-text="{{ search_blob|lower }}">
         <div class="mini-top">
@@ -50,7 +50,7 @@
         <div class="mini-meta">
           <span>Código: {{ item.code or "—" }}</span>
           <span>Ubicación: {{ item.location or "—" }}</span>
-          <span>Carrera: {{ item.career.name if item.career else "—" }}</span>
+          <span>Asignación: {{ item.display_assignment }}</span>
         </div>
         <a class="btn btn-ghost" style="margin-top:8px;" href="{{ url_for('inventory.material_detail', material_id=item.id) }}">Ver material</a>
       </article>

@@ -11,10 +11,15 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.models.career import Career
 from app.models.lab import Lab
-from app.models.material import Material
+from app.models.material import (
+    ACCESS_SCOPE_CAREER,
+    ACCESS_SCOPE_GENERAL,
+    ACCESS_SCOPE_PRIVATE,
+    Material,
+)
 from app.services.audit_service import log_event
 from app.utils.authz import min_role_required
-from app.utils.roles import ROLE_STUDENT, is_admin_role, normalize_role
+from app.utils.roles import is_admin_role
 from app.utils.media import resolve_media_url
 from app.utils.text import normalize_spaces, normalize_upper
 
@@ -134,13 +139,23 @@ def _base_inventory_query(*, include_inactive: bool):
 
 
 def _apply_student_career_scope(query):
-    if normalize_role(current_user.role) != ROLE_STUDENT:
-        return query
+    return Material.apply_visibility_scope(query, current_user)
 
-    if not current_user.career_id:
-        return query.filter(Material.id == -1)
 
-    return query.filter(Material.career_id == current_user.career_id)
+def _resolve_material_assignment(raw_value: str | None) -> tuple[str, int | None, str | None]:
+    selected = (raw_value or "").strip().upper()
+    if selected == ACCESS_SCOPE_GENERAL:
+        return ACCESS_SCOPE_GENERAL, None, None
+    if selected == ACCESS_SCOPE_PRIVATE:
+        return ACCESS_SCOPE_PRIVATE, None, None
+    try:
+        career_id = int((raw_value or "").strip())
+    except (TypeError, ValueError):
+        return ACCESS_SCOPE_CAREER, None, "Selecciona una carrera o visibilidad válida."
+    career = Career.query.get(career_id)
+    if not career:
+        return ACCESS_SCOPE_CAREER, None, "Selecciona una carrera válida."
+    return ACCESS_SCOPE_CAREER, career.id, None
 
 
 def _material_payload_from_form(material: Material | None = None) -> tuple[dict, str | None]:
@@ -160,10 +175,9 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
     if not lab:
         return {}, "Selecciona un laboratorio válido."
 
-    career_id = request.form.get("career_id", type=int)
-    career = Career.query.get(career_id) if career_id else None
-    if not career:
-        return {}, "Selecciona una carrera válida."
+    access_scope, career_id, assignment_error = _resolve_material_assignment(request.form.get("career_visibility"))
+    if assignment_error:
+        return {}, assignment_error
 
     pieces_qty_raw = normalize_spaces(request.form.get("pieces_qty") or "")
     if not pieces_qty_raw:
@@ -212,7 +226,8 @@ def _material_payload_from_form(material: Material | None = None) -> tuple[dict,
 
     payload = {
         "lab_id": lab.id,
-        "career_id": career.id,
+        "career_id": career_id,
+        "access_scope": access_scope,
         "name": name,
         "category": category or None,
         "location": normalized_location,
@@ -251,10 +266,6 @@ def _status_form_defaults(material: Material | None, form_data: dict) -> tuple[s
 @inventory_bp.route("/", methods=["GET"])
 @min_role_required("STUDENT")
 def inventory_list():
-    if normalize_role(current_user.role) == ROLE_STUDENT:
-        flash("El módulo de inventario no está disponible para tu rol.", "warning")
-        return redirect(url_for("root_home"))
-
     lab_id = request.args.get("lab_id", type=int)
     career_id = request.args.get("career_id", type=int)
     category = normalize_spaces(request.args.get("category") or "").upper()
@@ -274,8 +285,7 @@ def inventory_list():
     query = _apply_student_career_scope(query)
     if lab_id:
         query = query.filter(Material.lab_id == lab_id)
-    if career_id:
-        query = query.filter(Material.career_id == career_id)
+    query = Material.apply_career_filter(query, career_id)
     if category:
         query = query.filter(func.upper(func.coalesce(Material.category, "")) == category)
 
@@ -324,18 +334,14 @@ def inventory_list():
 @inventory_bp.route("/materials/<int:material_id>", methods=["GET"])
 @min_role_required("STUDENT")
 def material_detail(material_id: int):
-    if normalize_role(current_user.role) == ROLE_STUDENT:
-        flash("El módulo de inventario no está disponible para tu rol.", "warning")
-        return redirect(url_for("root_home"))
-
     m = Material.query.get(material_id)
     if not m:
         abort(404)
     if _is_inactive_status(m.status) and not is_admin_role(current_user.role):
         flash("Este material no está disponible para consulta pública.", "warning")
         return redirect(url_for("inventory.inventory_list"))
-    if normalize_role(current_user.role) == ROLE_STUDENT and m.career_id != current_user.career_id:
-        flash("No tienes acceso a materiales de otra carrera.", "error")
+    if not Material.user_can_access(m, current_user):
+        flash("No tienes acceso a este material por su visibilidad.", "error")
         return redirect(url_for("inventory.inventory_list"))
     return render_template(
         "inventory/material_detail.html",
