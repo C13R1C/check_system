@@ -161,6 +161,26 @@
   font-size: .82rem;
   color: var(--text-dim, #728078);
 }
+.field-help-text{
+  display:block;
+  margin-top:6px;
+  font-size:.82rem;
+  color:var(--text-dim, #728078);
+}
+.field-error-text{
+  display:none;
+  margin-top:6px;
+  font-size:.82rem;
+  color:#b42318;
+  font-weight:600;
+}
+.field-error-text.is-visible{
+  display:block;
+}
+.select-wrap.select-wrap-error select{
+  border-color:#b42318 !important;
+  box-shadow:0 0 0 2px rgba(180,35,24,.12);
+}
 
 @media (max-width: 900px) {
   .reservation-request-form {
@@ -254,12 +274,14 @@
       <label>Grupo</label>
       {% if is_professor %}
         {% if professor_subjects %}
-          <div class="select-wrap">
-            <select name="group_name" id="groupSelect" required style="text-transform: uppercase;">
-              <option value="">Selecciona un grupo</option>
+          <div class="select-wrap" id="groupSelectWrap">
+            <select name="group_name" id="groupSelect" required style="text-transform: uppercase;" disabled>
+              <option value="">Selecciona primero una materia</option>
             </select>
             <i class="ph ph-caret-down select-arrow"></i>
           </div>
+          <small id="groupHelpText" class="field-help-text">Selecciona primero una materia</small>
+          <small id="groupErrorText" class="field-error-text">Debes seleccionar un grupo válido para continuar.</small>
         {% else %}
           <div class="search-box">
             <i class="ph ph-warning-circle search-icon"></i>
@@ -383,6 +405,9 @@
 const professorGroupsBySubject = {{ professor_groups_by_subject | tojson if is_professor else "{}" }};
 const subjectSelect = document.getElementById("subjectSelect");
 const groupSelect = document.getElementById("groupSelect");
+const groupSelectWrap = document.getElementById("groupSelectWrap");
+const groupHelpText = document.getElementById("groupHelpText");
+const groupErrorText = document.getElementById("groupErrorText");
 const reservationDateInput = document.getElementById("reservationDateInput");
 const startTimeInput = document.getElementById("startTimeInput");
 const endTimeInput = document.getElementById("endTimeInput");
@@ -871,30 +896,79 @@ function renderGroupOptionsForSelectedSubject() {
 
   const selectedSubject = (subjectSelect.value || "").toUpperCase();
   const groups = professorGroupsBySubject[selectedSubject] || [];
-  const previousValue = groupSelect.value;
+  const showError = (visible) => {
+    if (!groupErrorText) return;
+    groupErrorText.classList.toggle("is-visible", visible);
+    if (groupSelectWrap) groupSelectWrap.classList.toggle("select-wrap-error", visible);
+  };
+  const setHelp = (text) => {
+    if (groupHelpText) groupHelpText.textContent = text;
+  };
+  const setPlaceholderOnly = (text) => {
+    groupSelect.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = text;
+    groupSelect.appendChild(placeholder);
+  };
 
-  groupSelect.innerHTML = "";
+  showError(false);
+  groupSelect.value = "";
 
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = groups.length ? "Selecciona un grupo" : "Sin grupos para esta materia";
-  groupSelect.appendChild(placeholder);
-
-  groups.forEach((groupCode) => {
-    const option = document.createElement("option");
-    option.value = (groupCode || "").toUpperCase();
-    option.textContent = (groupCode || "").toUpperCase();
-    groupSelect.appendChild(option);
-  });
-
-  if (groups.includes(previousValue)) {
-    groupSelect.value = previousValue;
+  if (!selectedSubject) {
+    setPlaceholderOnly("Selecciona primero una materia");
+    groupSelect.disabled = true;
+    setHelp("Selecciona primero una materia");
+    return;
   }
+
+  setPlaceholderOnly("Cargando grupos…");
+  groupSelect.disabled = true;
+  setHelp("Cargando grupos…");
+
+  window.setTimeout(() => {
+    groupSelect.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    if (!groups.length) {
+      placeholder.textContent = "Esta materia no tiene grupos registrados";
+      groupSelect.appendChild(placeholder);
+      groupSelect.disabled = true;
+      setHelp("Sin grupos disponibles para esta materia");
+      return;
+    }
+
+    placeholder.textContent = "Selecciona un grupo";
+    groupSelect.appendChild(placeholder);
+    groups.forEach((groupCode) => {
+      const option = document.createElement("option");
+      option.value = (groupCode || "").toUpperCase();
+      option.textContent = (groupCode || "").toUpperCase();
+      groupSelect.appendChild(option);
+    });
+    groupSelect.disabled = false;
+    setHelp(`${groups.length} grupos disponibles`);
+  }, 180);
 }
 
 if (subjectSelect && groupSelect) {
   subjectSelect.addEventListener("change", renderGroupOptionsForSelectedSubject);
+  groupSelect.addEventListener("change", () => {
+    if (!groupSelect.value) return;
+    if (groupErrorText) groupErrorText.classList.remove("is-visible");
+    if (groupSelectWrap) groupSelectWrap.classList.remove("select-wrap-error");
+  });
   renderGroupOptionsForSelectedSubject();
 }
+
+reservationForm?.addEventListener("submit", (event) => {
+  if (!subjectSelect || !groupSelect) return;
+  if (groupSelect.disabled || !groupSelect.value) {
+    event.preventDefault();
+    groupSelect.focus();
+    if (groupErrorText) groupErrorText.classList.add("is-visible");
+    if (groupSelectWrap) groupSelectWrap.classList.add("select-wrap-error");
+  }
+});
 </script>
 {% endblock %}
