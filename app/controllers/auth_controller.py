@@ -227,7 +227,10 @@ def register():
 def verify(token):
     token_data = confirm_verify_token(token, max_age_seconds=3600)
     if not token_data:
-        flash("Token inválido o expirado.", "error")
+        if peek_verify_token(token):
+            flash("El enlace de verificación expiró. Solicita uno nuevo.", "warning")
+        else:
+            flash("El enlace de verificación no es válido.", "error")
         return redirect(url_for("auth.auth_page", mode="login"))
 
     email = str(token_data.get("email") or "").strip().lower()
@@ -235,22 +238,16 @@ def verify(token):
 
     user = User.query.filter_by(email=email).first()
     if not user:
-        token_preview = peek_verify_token(token)
-        token_email = str((token_preview or {}).get("email") or "").strip().lower()
-        if token_email and token_email == email:
-            flash("La cuenta asociada ya no existe.", "warning")
-            return redirect(url_for("auth.auth_page", mode="register"))
-        return redirect(url_for("auth.auth_page", mode="register"))
+        flash("El enlace de verificación no es válido.", "error")
+        return redirect(url_for("auth.auth_page", mode="login"))
     if token_version != (user.verify_token_version or 0):
-        flash("Token inválido o expirado.", "error")
+        flash("El enlace de verificación no es válido.", "error")
         return redirect(url_for("auth.auth_page", mode="login"))
 
     if user.is_verified:
-        flash("Correo ya verificado. Bienvenido.", "success")
-        login_user(user)
-        if _requires_profile_completion(user.role) and not user.profile_completed:
-            return redirect(url_for("profile.complete_profile"))
-        return redirect(url_for(resolve_landing_endpoint(user.role)))
+        _clear_pending_verify_session()
+        flash("Tu correo ya estaba verificado. Inicia sesión.", "info")
+        return redirect(url_for("auth.auth_page", mode="login"))
 
     user.is_verified = True
     user.verified_at = db.func.now()
@@ -259,11 +256,8 @@ def verify(token):
     db.session.commit()
 
     _clear_pending_verify_session()
-    flash("Correo verificado correctamente.", "success")
-    login_user(user)
-    if _requires_profile_completion(user.role) and not user.profile_completed:
-        return redirect(url_for("profile.complete_profile"))
-    return redirect(url_for(resolve_landing_endpoint(user.role)))
+    flash("Correo verificado. Ya puedes iniciar sesión.", "success")
+    return redirect(url_for("auth.auth_page", mode="login"))
 
 
 @auth_bp.route("/change-email", methods=["POST"])
