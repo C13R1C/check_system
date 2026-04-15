@@ -255,7 +255,7 @@
       {% if is_professor %}
         {% if professor_subjects %}
           <div class="select-wrap">
-            <select name="group_name" id="groupSelect" required style="text-transform: uppercase;">
+            <select name="group_name" id="groupSelect" required style="text-transform: uppercase;" disabled>
               <option value="">Selecciona un grupo</option>
             </select>
             <i class="ph ph-caret-down select-arrow"></i>
@@ -877,8 +877,15 @@ function renderGroupOptionsForSelectedSubject() {
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = groups.length ? "Selecciona un grupo" : "Sin grupos para esta materia";
+  if (!selectedSubject) {
+    placeholder.textContent = "Selecciona primero una materia";
+  } else if (!groups.length) {
+    placeholder.textContent = "Sin grupos para esta materia";
+  } else {
+    placeholder.textContent = "Selecciona un grupo";
+  }
   groupSelect.appendChild(placeholder);
+  groupSelect.disabled = !selectedSubject || !groups.length;
 
   groups.forEach((groupCode) => {
     const option = document.createElement("option");

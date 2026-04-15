@@ -290,8 +290,9 @@
       {
         id: {{ m.id }},
         name: {{ (m.name or '')|tojson }},
+        access_scope: {{ (m.normalized_access_scope or 'CAREER')|tojson }},
         career_id: {{ m.career_id if m.career_id is not none else 'null' }},
-        career: {{ (m.career.name if m.career else 'Global')|tojson }}
+        assignment: {{ (m.display_assignment or '')|tojson }}
       }{% if not loop.last %},{% endif %}
     {% endfor %}
   ];
@@ -334,6 +335,15 @@
   let selectedStudent = null;
 
   const normalize = (value) => (value || "").toString().toLowerCase().trim();
+  const canStudentUseMaterial = (student, material) => {
+    const scope = normalize(material.access_scope).toUpperCase();
+    if (scope === "GENERAL") return true;
+    if (scope === "CAREER") {
+      if (material.career_id === null || material.career_id === undefined) return false;
+      return Number(material.career_id) === Number(student.career_id);
+    }
+    return false;
+  };
 
   const renderAutocomplete = () => {
     const query = normalize(searchInput.value);
@@ -347,8 +357,7 @@
         if (!selectedStudent) return false;
         const role = normalize(selectedStudent.role).toUpperCase();
         if (role === "STUDENT") {
-          if (m.career_id === null || m.career_id === undefined) return true;
-          return Number(m.career_id) === Number(selectedStudent.career_id);
+          return canStudentUseMaterial(selectedStudent, m);
         }
         return true;
       })
@@ -363,7 +372,7 @@
     autocomplete.innerHTML = matches.map((m) => {
       return `<div class="autocomplete-item" data-material-id="${m.id}" role="button" tabindex="0">`
         + `<span class="autocomplete-item-title">${m.name}</span>`
-        + `<span class="autocomplete-item-meta">ID ${m.id} · ${(m.career || "Global").toString()}</span>`
+        + `<span class="autocomplete-item-meta">ID ${m.id} · ${(m.assignment || "Sin asignación").toString()}</span>`
         + `</div>`;
     }).join("");
   };

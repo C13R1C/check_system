@@ -125,15 +125,13 @@ def _can_assign_material_to_user(user: User, material: Material | None) -> tuple
     if not material:
         return True, None
 
-    role = (user.role or "").upper()
+    role = (user.role or "").strip().upper()
     if role == "STUDENT":
-        if material.career_id is None:
+        if Material.user_can_access(material, user):
             return True, None
         if not user.career_id:
             return False, f"El alumno {user.email} no tiene carrera asignada y el material '{material.name}' requiere carrera."
-        if material.career_id != user.career_id:
-            return False, f"El material '{material.name}' no corresponde a la carrera del alumno seleccionado."
-        return True, None
+        return False, f"El material '{material.name}' no corresponde a la visibilidad del alumno seleccionado."
 
     # Docente (y roles administrativos por compatibilidad legacy) puede recibir cualquier material.
     return True, None
