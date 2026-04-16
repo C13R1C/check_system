@@ -263,12 +263,36 @@ html { font-size: 15px; }
 .overlay-media {
   margin-bottom: 0.65rem;
 }
-.overlay-media img{
+.ra-material-photo-frame {
   width: 100%;
-  max-height: 140px;
-  object-fit: cover;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
   border: 1px solid rgba(255,255,255,.25);
+  background: rgba(0, 0, 0, 0.28);
+}
+.ra-material-photo {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+.ra-material-photo-frame.horizontal {
+  aspect-ratio: 16 / 9;
+  max-height: 260px;
+}
+.ra-material-photo-frame.vertical {
+  aspect-ratio: 4 / 5;
+  max-height: 360px;
+}
+.ra-material-photo-frame.square {
+  aspect-ratio: 1 / 1;
+  max-height: 280px;
 }
 .overlay-media-fallback{
   display:flex;
@@ -584,8 +608,10 @@ html { font-size: 15px; }
 .modal-close:hover { background: var(--card-hover); color: var(--fg); }
 .modal-image {
   width: 100%;
-  height: 200px;
-  object-fit: cover;
+  max-height: 260px;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
   background: var(--bg-raised);
 }
 .modal-body { padding: 1.25rem; }
@@ -712,6 +738,9 @@ html { font-size: 15px; }
   .toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .material-overlay { padding: 2rem 0.8rem 0.8rem; }
   .overlay-grid { grid-template-columns: 1fr; gap: 0.25rem; }
+  .ra-material-photo-frame.horizontal { max-height: 220px; }
+  .ra-material-photo-frame.vertical { max-height: 300px; }
+  .ra-material-photo-frame.square { max-height: 240px; }
 }
 @media (max-width: 480px) {
   .hero { padding: 0.8rem; }
@@ -723,6 +752,9 @@ html { font-size: 15px; }
   .toolbar { grid-template-columns: 1fr; }
   .btn-toolbar { justify-content: center; }
   .overlay-actions { flex-direction: column; }
+  .ra-material-photo-frame.horizontal { max-height: 180px; }
+  .ra-material-photo-frame.vertical { max-height: 240px; }
+  .ra-material-photo-frame.square { max-height: 200px; }
   html { font-size: 14px; }
   .modal-detail-grid { grid-template-columns: 1fr; gap: 0.4rem; }
   .modal-detail-label { font-size: 0.68rem; }
@@ -974,6 +1006,8 @@ function toUiMaterial(payload) {
     pieces_qty: m.pieces_qty,
     tutorial_url: m.tutorial_url || "",
     image_ref: imageUrl,
+    image_orientation: m.image_orientation || 'square',
+    image_aspect_ratio: m.image_aspect_ratio,
     notes: m.notes || "Sin observaciones"
   };
 }
@@ -1039,9 +1073,10 @@ function statusBadgeClass(status) {
 function showOverlay(mat) {
   document.getElementById('overlayName').textContent = mat.name;
   const overlayMedia = document.getElementById('overlayMedia');
+  const orientation = ['horizontal', 'vertical', 'square'].includes(mat.image_orientation) ? mat.image_orientation : 'square';
   if (overlayMedia) {
     overlayMedia.innerHTML = mat.image_ref
-      ? `<img src="${escapeHtml(mat.image_ref)}" alt="Imagen de ${escapeHtml(mat.name)}" onerror="this.closest('.overlay-media').innerHTML='<div class=&quot;overlay-media-fallback&quot;>Sin imagen disponible</div>';">`
+      ? `<div class="ra-material-photo-frame ${orientation}"><img src="${escapeHtml(mat.image_ref)}" class="ra-material-photo" alt="Imagen de ${escapeHtml(mat.name)}" onerror="this.closest('.overlay-media').innerHTML='<div class=&quot;overlay-media-fallback&quot;>Sin imagen disponible</div>';"></div>`
       : '<div class="overlay-media-fallback">Sin imagen disponible</div>';
   }
   document.getElementById('overlayGrid').innerHTML = `

@@ -19,6 +19,7 @@ from app.models.material import (
 )
 from app.services.audit_service import log_event
 from app.utils.authz import min_role_required
+from app.utils.image_meta import extract_image_metadata
 from app.utils.roles import is_admin_role
 from app.utils.media import resolve_media_url
 from app.utils.text import normalize_spaces, normalize_upper
@@ -50,11 +51,11 @@ def _is_allowed_image(filename: str) -> bool:
     return ext in ALLOWED_IMAGE_EXTENSIONS
 
 
-def _save_material_image(file_storage) -> tuple[str | None, str | None]:
+def _save_material_image(file_storage) -> tuple[str | None, str | None, dict | None]:
     if not file_storage or not file_storage.filename:
-        return None, None
+        return None, None, None
     if not _is_allowed_image(file_storage.filename):
-        return None, "Formato de imagen inválido. Usa PNG, JPG, JPEG, WEBP o GIF."
+        return None, "Formato de imagen inválido. Usa PNG, JPG, JPEG, WEBP o GIF.", None
 
     safe_name = secure_filename(file_storage.filename)
     ext = safe_name.rsplit(".", 1)[1].lower()
@@ -65,7 +66,14 @@ def _save_material_image(file_storage) -> tuple[str | None, str | None]:
     filename = f"{uuid4().hex}.{ext}"
     abs_path = os.path.join(abs_dir, filename)
     file_storage.save(abs_path)
-    return f"{rel_dir}/{filename}", None
+    metadata = extract_image_metadata(abs_path)
+    if not metadata:
+        try:
+            os.remove(abs_path)
+        except OSError:
+            pass
+        return None, "No pudimos procesar la imagen. Intenta con un archivo válido.", None
+    return f"{rel_dir}/{filename}", None, metadata
 
 
 def _material_image_src(material: Material | None) -> str | None:
@@ -362,7 +370,7 @@ def admin_new_material():
         payload, error = _material_payload_from_form()
         form_data = dict(request.form)
         active_state_default, tool_condition_default = _status_form_defaults(None, form_data)
-        image_ref, image_error = _save_material_image(request.files.get("image_file"))
+        image_ref, image_error, _image_metadata = _save_material_image(request.files.get("image_file"))
         if not error and image_error:
             error = image_error
         if error:
@@ -441,7 +449,7 @@ def admin_edit_material(material_id: int):
         active_state_default, tool_condition_default = _status_form_defaults(material, form_data)
         reason_value = normalize_upper(request.form.get("status_change_reason")) or ""
         remove_image = (request.form.get("remove_image") or "").strip() == "1"
-        new_image_ref, image_error = _save_material_image(request.files.get("image_file"))
+        new_image_ref, image_error, _image_metadata = _save_material_image(request.files.get("image_file"))
         if not error and image_error:
             error = image_error
 
