@@ -50,7 +50,7 @@
         <tr><td><strong>Modelo</strong></td><td>{{ (material.model or '-') | upper }}</td></tr>
         <tr><td><strong>Observaciones</strong></td><td>{{ (material.notes or 'Sin observaciones') | upper }}</td></tr>
         {% if material_image_src %}
-          <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>
+          <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" class="js-image-preview content-image-previewable" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>
         {% else %}
           <tr><td><strong>Imagen</strong></td><td><div style="max-width:340px;width:100%;height:180px;border-radius:10px;border:1px dashed var(--stroke);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.45);color:var(--text-dim);">Sin imagen disponible</div></td></tr>
         {% endif %}

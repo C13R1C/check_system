@@ -666,7 +666,7 @@ function updateClockPeriodButtons() {
 }
 
 function updateClockSelectionUI() {
-  const angle = (clockPickerStepIndex * 15) - 90;
+  const angle = clockPickerStepIndex * 15;
   clockPickerHand.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
   clockPickerCurrent.textContent = labelFromClock(clockPickerStepIndex, clockPickerPeriod);
 
@@ -796,7 +796,7 @@ if (startTimeInput && endTimeInput) {
       marker.type = "button";
       marker.className = `clock-marker ${step % 2 === 0 ? "is-hour" : "is-half"}`;
       marker.dataset.step = String(step);
-      const angle = (step * 15) - 90;
+      const angle = step * 15;
       marker.style.setProperty("--angle", `${angle}deg`);
 
       if (step % 2 === 0) {

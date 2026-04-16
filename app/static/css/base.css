@@ -1668,7 +1668,7 @@ textarea.form-control{
   height: 102px;
   border-radius: 999px;
   transform-origin: 50% 100%;
-  transform: translate(-50%, -100%) rotate(-90deg);
+  transform: translate(-50%, -100%) rotate(0deg);
   background: linear-gradient(180deg, rgba(199,159,51,.2), rgba(199,159,51,.9));
   transition: transform .12s ease;
 }
@@ -1972,5 +1972,85 @@ pre code{
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+.content-image-previewable{
+  cursor: zoom-in;
+}
+
+.content-image-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.content-image-modal.is-open{
+  display: flex;
+}
+
+.content-image-modal-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.content-image-modal-content{
+  position: relative;
+  width: min(880px, 100%);
+  max-height: min(92vh, 720px);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 24px 50px rgba(0,0,0,.28);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.content-image-modal-wrap{
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.content-image-modal-img{
+  width: 100%;
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fafafa;
+}
+
+.content-image-modal-empty{
+  display:none;
+  padding:24px;
+  color:var(--text-dim);
+  font-weight:600;
+}
+
+@media (max-width: 768px){
+  .content-image-modal{
+    padding: 10px;
+  }
+  .content-image-modal-content{
+    width: 100%;
+    max-height: 94vh;
+    padding: 12px;
+  }
+  .content-image-modal-img{
+    max-height: 72vh;
   }
 }
