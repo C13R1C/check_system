@@ -53,6 +53,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return isSidebarOpen();
   }
 
+  function ensureSidebarOpenFromLogo() {
+    if (isMobile()) {
+      if (!sidebar.classList.contains("mobile-open")) openMobileSidebar();
+      return isSidebarOpen();
+    }
+    if (sidebar.classList.contains("collapsed")) {
+      sidebar.classList.remove("collapsed");
+      notifySidebarState();
+    }
+    return isSidebarOpen();
+  }
+
   function resetDesktopStateOnMobile() {
     if (isMobile()) {
       sidebar.classList.remove("collapsed");
@@ -67,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.coyolabsSidebar = {
     toggleFromLogo: toggleSidebarFromLogo,
+    ensureOpenFromLogo: ensureSidebarOpenFromLogo,
     close: closeMobileSidebar,
     isOpen: isSidebarOpen,
   };

@@ -190,7 +190,7 @@
       <article class="lostfound-card">
         <a href="{{ url_for('lostfound.detail', item_id=it.id) }}">
           <img
-            class="lostfound-card-image"
+            class="lostfound-card-image js-image-preview content-image-previewable"
             src="{{ image_src }}"
             onerror="this.onerror=null; this.src='{{ fallback_image }}';"
             alt="Foto de {{ it.title }}"

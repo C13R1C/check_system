@@ -533,8 +533,89 @@
     </main>
   </div>
   <div id="notification-container"></div>
+  <div id="contentImageModal" class="content-image-modal" aria-hidden="true">
+    <div class="content-image-modal-backdrop" data-image-preview-close="1"></div>
+    <div class="content-image-modal-content" role="dialog" aria-modal="true" aria-label="Vista previa de imagen">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+        <h3 style="margin:0;">Vista previa</h3>
+        <button type="button" id="contentImageModalCloseBtn" class="btn btn-ghost">Cerrar</button>
+      </div>
+      <div class="content-image-modal-wrap">
+        <img id="contentImageModalPreview" class="content-image-modal-img" src="" alt="Vista previa de imagen">
+        <div id="contentImageModalEmpty" class="content-image-modal-empty">Imagen no disponible</div>
+      </div>
+    </div>
+  </div>
 
   <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script>
+    (function () {
+      const modal = document.getElementById("contentImageModal");
+      const img = document.getElementById("contentImageModalPreview");
+      const empty = document.getElementById("contentImageModalEmpty");
+      const closeBtn = document.getElementById("contentImageModalCloseBtn");
+      if (!modal || !img || !empty || !closeBtn) return;
+
+      function openImagePreview(url, altText) {
+        if (!url) return;
+        img.style.display = "none";
+        empty.style.display = "none";
+        img.src = "";
+        img.alt = altText || "Vista previa de imagen";
+        img.onload = () => {
+          img.style.display = "block";
+          empty.style.display = "none";
+        };
+        img.onerror = () => {
+          img.style.display = "none";
+          empty.style.display = "block";
+        };
+        img.src = url;
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("modal-open");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeImagePreview() {
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+        img.src = "";
+        img.style.display = "none";
+        empty.style.display = "none";
+        document.body.classList.remove("modal-open");
+        document.body.style.overflow = "";
+      }
+
+      document.addEventListener("click", (event) => {
+        const trigger = event.target.closest(".js-image-preview,[data-image-preview]");
+        if (trigger) {
+          const src = trigger.dataset.imagePreviewSrc
+            || trigger.getAttribute("data-image-preview-src")
+            || trigger.getAttribute("src")
+            || trigger.currentSrc
+            || "";
+          const alt = trigger.getAttribute("data-image-preview-alt")
+            || trigger.getAttribute("alt")
+            || "Vista previa de imagen";
+          if (!src) return;
+          event.preventDefault();
+          openImagePreview(src, alt);
+          return;
+        }
+        if (event.target?.dataset?.imagePreviewClose === "1") {
+          closeImagePreview();
+        }
+      });
+
+      closeBtn.addEventListener("click", closeImagePreview);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal.classList.contains("is-open")) {
+          closeImagePreview();
+        }
+      });
+    })();
+  </script>
   <script>
     (function () {
       const token = "{{ csrf_token }}";
@@ -1196,8 +1277,8 @@
 
       logoToggle.addEventListener("click", (event) => {
         event.preventDefault();
-        if (window.coyolabsSidebar && typeof window.coyolabsSidebar.toggleFromLogo === "function") {
-          window.coyolabsSidebar.toggleFromLogo();
+        if (window.coyolabsSidebar && typeof window.coyolabsSidebar.ensureOpenFromLogo === "function") {
+          window.coyolabsSidebar.ensureOpenFromLogo();
           toggleNotificationCenterWhenSidebarOpen();
           return;
         }
