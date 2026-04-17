@@ -89,6 +89,7 @@
             <tr>
               <th>Solicitante</th>
               <th>Usuario</th>
+              <th>Lab solicitado</th>
               <th>Grupo</th>
               <th>Fecha</th>
               <th>Inicio</th>
@@ -103,6 +104,7 @@
             <tr>
               <td data-label="Solicitante" class="queue-requester">{{ (r.user.full_name or '')|trim or r.user.email }}</td>
               <td data-label="Usuario">{{ r.user.email }}</td>
+              <td data-label="Lab solicitado">{{ r.room }}</td>
               <td data-label="Grupo">{{ r.group_name }}</td>
               <td data-label="Fecha">{{ r.date }}</td>
               <td data-label="Inicio">{{ r.start_time }}</td>

@@ -20,8 +20,9 @@ from app.utils.roles import (
 from app.utils.validators import is_valid_utpn_email
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
+FINAL_OPERATIONAL_ROLES = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN, ROLE_SUPERADMIN)
 PENDING_APPROVAL_ROLES = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN, ROLE_SUPERADMIN)
-ADMIN_PANEL_ROLE_FILTERS = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN, ROLE_SUPERADMIN)
+ADMIN_PANEL_ROLE_FILTERS = (ROLE_PENDING, ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN, ROLE_SUPERADMIN)
 SUPERADMIN_ASSIGNABLE_ROLES = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN)
 ROOT_SUPERADMIN_ASSIGNABLE_ROLES = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF, ROLE_ADMIN, ROLE_SUPERADMIN)
 ADMIN_ASSIGNABLE_ROLES = (ROLE_STUDENT, ROLE_TEACHER, ROLE_STAFF)
@@ -77,6 +78,36 @@ def _is_current_root_superadmin() -> bool:
 def _is_admin_or_superadmin() -> bool:
     role = normalize_role(current_user.role)
     return role in {ROLE_ADMIN, ROLE_SUPERADMIN}
+
+
+def _has_final_operational_role(role: str | None) -> bool:
+    return normalize_role(role) in FINAL_OPERATIONAL_ROLES
+
+
+def _pending_role_order_expression():
+    return db.case(
+        (User.role.in_(FINAL_OPERATIONAL_ROLES), 1),
+        else_=0,
+    )
+
+
+def _role_search_tokens(search_text: str) -> set[str]:
+    value = (search_text or "").strip().lower()
+    if not value:
+        return set()
+    role_token_map = {
+        ROLE_STUDENT: ("student", "estudiante", "alumno"),
+        ROLE_TEACHER: ("teacher", "profesor", "docente"),
+        ROLE_STAFF: ("staff", "personal"),
+        ROLE_ADMIN: ("admin", "administrador"),
+        ROLE_SUPERADMIN: ("superadmin", "super administrador", "superadministrador"),
+        ROLE_PENDING: ("pending", "pendiente", "sin rol"),
+    }
+    matched: set[str] = set()
+    for role_name, aliases in role_token_map.items():
+        if any(alias in value for alias in aliases):
+            matched.add(role_name)
+    return matched
 
 
 def _pending_assignable_roles() -> tuple[str, ...]:
@@ -251,26 +282,42 @@ def admin_panel():
     q = (request.args.get("q") or "").strip()
     role = normalize_role(request.args.get("role"))
 
-    query = User.query.filter(User.role != ROLE_PENDING)
+    query = User.query
 
     if q:
         like = f"%{q.lower()}%"
+        role_tokens = _role_search_tokens(q)
+        role_condition = User.role.in_(tuple(role_tokens)) if role_tokens else db.false()
         query = query.filter(
             db.or_(
                 db.func.lower(User.email).like(like),
                 db.func.lower(db.func.coalesce(User.full_name, "")).like(like),
                 db.func.lower(db.func.coalesce(User.matricula, "")).like(like),
+                db.func.lower(db.func.coalesce(User.role, "")).like(like),
+                role_condition,
             )
         )
 
     if role in ADMIN_PANEL_ROLE_FILTERS:
-        query = query.filter(User.role == role)
+        if role == ROLE_PENDING:
+            query = query.filter(~User.role.in_(FINAL_OPERATIONAL_ROLES))
+        else:
+            query = query.filter(User.role == role)
 
-    users = query.order_by(User.created_at.desc()).limit(300).all()
-    pending_review_count = User.query.filter(User.role == ROLE_PENDING).count()
+    users = (
+        query
+        .order_by(
+            _pending_role_order_expression().asc(),
+            User.created_at.desc(),
+            User.id.desc(),
+        )
+        .limit(300)
+        .all()
+    )
+    pending_review_count = User.query.filter(~User.role.in_(FINAL_OPERATIONAL_ROLES)).count()
 
     assignable_roles = ROOT_SUPERADMIN_ASSIGNABLE_ROLES if _is_current_root_superadmin() else (
-        SUPERADMIN_ASSIGNABLE_ROLES if _is_superadmin() else ADMIN_ASSIGNABLE_ROLES
+        SUPERADMIN_ASSIGNABLE_ROLES if _is_superadmin() else _pending_assignable_roles()
     )
     root_superadmin = _root_superadmin_user()
 
@@ -287,6 +334,93 @@ def admin_panel():
         pending_review_count=pending_review_count,
         active_page="users",
     )
+
+
+@users_bp.route("/admin/<int:user_id>/role-inline", methods=["POST"])
+@min_role_required("ADMIN")
+def admin_inline_role_update(user_id: int):
+    if not _is_admin_or_superadmin():
+        flash("No autorizado.", "error")
+        return redirect(url_for("users.admin_panel"))
+
+    user = User.query.get_or_404(user_id)
+    requested_role = normalize_role(request.form.get("role"))
+    reason = (request.form.get("role_change_reason") or "").strip()
+    reason_detail = (request.form.get("role_change_reason_detail") or "").strip()
+    old_role = normalize_role(user.role)
+
+    if requested_role not in FINAL_OPERATIONAL_ROLES:
+        flash("Rol no permitido para asignación operativa.", "error")
+        return redirect(url_for("users.admin_panel"))
+
+    is_first_assignment = not _has_final_operational_role(old_role)
+    changing_existing_role = _has_final_operational_role(old_role) and old_role != requested_role
+
+    if is_first_assignment:
+        if not _can_assign_pending_role(requested_role):
+            if requested_role in {ROLE_ADMIN, ROLE_SUPERADMIN}:
+                flash("Solo SUPERADMIN puede asignar ese rol.", "error")
+            else:
+                flash("Rol no permitido para tu nivel de acceso.", "error")
+            return redirect(url_for("users.admin_panel"))
+    else:
+        if not _is_superadmin():
+            flash("Solo SUPERADMIN puede cambiar roles ya asignados.", "error")
+            return redirect(url_for("users.admin_panel"))
+        assignable_roles = (
+            ROOT_SUPERADMIN_ASSIGNABLE_ROLES
+            if _is_current_root_superadmin()
+            else SUPERADMIN_ASSIGNABLE_ROLES
+        )
+        if requested_role not in assignable_roles:
+            flash("Rol no permitido para tu nivel de acceso.", "error")
+            return redirect(url_for("users.admin_panel"))
+
+    if changing_existing_role and not reason:
+        flash("Debes indicar un motivo para el cambio de rol.", "error")
+        return redirect(url_for("users.admin_panel"))
+
+    if old_role == ROLE_SUPERADMIN and requested_role != ROLE_SUPERADMIN and not _is_current_root_superadmin():
+        flash("Solo el SUPERADMIN padre puede revocar rol SUPERADMIN.", "error")
+        return redirect(url_for("users.admin_panel"))
+    if _is_root_superadmin_user(user) and requested_role != ROLE_SUPERADMIN:
+        flash("No puedes degradar al SUPERADMIN padre.", "error")
+        return redirect(url_for("users.admin_panel"))
+
+    user.role = requested_role
+    if not _has_final_operational_role(old_role):
+        (
+            Notification.query
+            .filter(
+                Notification.event_code == "PENDING_PROFILE",
+                Notification.related_user_id == user.id,
+                Notification.is_persistent.is_(True),
+            )
+            .update(
+                {
+                    Notification.is_persistent: False,
+                    Notification.is_read: True,
+                },
+                synchronize_session=False,
+            )
+        )
+
+    _log_admin_event(
+        action="USER_ROLE_INLINE_UPDATED",
+        description=f"{current_user.email} actualizó rol de {user.email}",
+        metadata={
+            "user_id": user.id,
+            "old_role": old_role,
+            "new_role": requested_role,
+            "is_first_assignment": is_first_assignment,
+            "role_change_reason": reason or None,
+            "role_change_reason_detail": reason_detail or None,
+        },
+    )
+    db.session.commit()
+
+    flash("Rol actualizado correctamente.", "success")
+    return redirect(url_for("users.admin_panel"))
 
 
 @users_bp.route("/admin/profile-change-requests", methods=["GET"])

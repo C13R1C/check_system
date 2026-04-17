@@ -745,6 +745,7 @@ def complete_profile():
         if group_name_error:
             flash(group_name_error)
             return redirect(url_for("profile.complete_profile"))
+        group_name = normalize_upper(group_name) or None
         if is_student and not group_name:
             flash("El grupo es obligatorio para estudiantes.")
             return redirect(url_for("profile.complete_profile"))
