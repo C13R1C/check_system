@@ -72,6 +72,15 @@ class Material(db.Model):
         return "Carrera: Sin carrera"
 
     @classmethod
+    def _general_visibility_expression(cls):
+        from app.models.career import Career
+
+        return or_(
+            cls.access_scope == ACCESS_SCOPE_GENERAL,
+            cls.career.has(db.func.upper(db.func.coalesce(Career.name, "")) == "GENERAL"),
+        )
+
+    @classmethod
     def apply_visibility_scope(cls, query, user):
         if normalize_role(getattr(user, "role", None)) != ROLE_STUDENT:
             return query
@@ -79,7 +88,7 @@ class Material(db.Model):
             return query.filter(cls.id == -1)
         return query.filter(
             or_(
-                cls.access_scope == ACCESS_SCOPE_GENERAL,
+                cls._general_visibility_expression(),
                 and_(
                     cls.access_scope == ACCESS_SCOPE_CAREER,
                     cls.career_id == user.career_id,
@@ -105,6 +114,8 @@ class Material(db.Model):
         if normalize_role(getattr(user, "role", None)) != ROLE_STUDENT:
             return True
         if material.normalized_access_scope == ACCESS_SCOPE_GENERAL:
+            return True
+        if material.career and (material.career.name or "").strip().upper() == "GENERAL":
             return True
         if material.normalized_access_scope == ACCESS_SCOPE_CAREER:
             user_career_id = getattr(user, "career_id", None)

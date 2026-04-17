@@ -62,6 +62,12 @@ def _can_user_access_ra_material(user: User, material: Material) -> tuple[bool, 
     return False, "No tienes permitido usar este material."
 
 
+def _apply_api_material_visibility(query):
+    if not current_user.is_authenticated:
+        return query
+    return Material.apply_visibility_scope(query, current_user)
+
+
 def material_to_dict(m: Material) -> dict:
     return {
         "id": m.id,
@@ -115,7 +121,7 @@ def ra_material_to_dict(m: Material) -> dict:
 @api_bp.route("/materials/<int:material_id>", methods=["GET"])
 @api_key_required
 def get_material(material_id: int):
-    m = Material.query.get(material_id)
+    m = _apply_api_material_visibility(Material.query).filter(Material.id == material_id).first()
     if not m:
         return jsonify({"error": "Material no encontrado"}), 404
     return jsonify(material_to_dict(m)), 200
@@ -127,7 +133,7 @@ def search_materials():
     lab_id = request.args.get("lab_id", type=int)
     q = (request.args.get("q") or "").strip()
 
-    query = Material.query
+    query = _apply_api_material_visibility(Material.query)
     if lab_id:
         query = query.filter(Material.lab_id == lab_id)
 

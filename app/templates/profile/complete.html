@@ -461,7 +461,7 @@
               <input
                 id="group_name"
                 name="group_name"
-                class="js-uppercase-safe"
+                class="always-uppercase js-uppercase-safe"
                 placeholder="Ej. MTMXX / TRM51 / etc."
                 maxlength="80"
                 required
@@ -571,5 +571,28 @@
     })();
   </script>
   {% endif %}
+
+  <script>
+    (() => {
+      const groupInput = document.getElementById("group_name");
+      if (!groupInput) return;
+
+      const normalizeGroupValue = () => {
+        const raw = groupInput.value || "";
+        const upper = raw.toUpperCase();
+        if (raw !== upper) {
+          const cursor = groupInput.selectionStart;
+          groupInput.value = upper;
+          if (typeof cursor === "number") {
+            groupInput.setSelectionRange(cursor, cursor);
+          }
+        }
+      };
+
+      groupInput.addEventListener("input", normalizeGroupValue);
+      groupInput.addEventListener("blur", normalizeGroupValue);
+      normalizeGroupValue();
+    })();
+  </script>
 </body>
 </html>
