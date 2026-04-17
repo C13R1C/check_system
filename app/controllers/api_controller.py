@@ -6,6 +6,7 @@ from app.models.material import Material
 from app.models.user import User
 from app.services.audit_service import log_event
 from app.services.debt_service import user_has_open_debts
+from app.utils.image_meta import material_image_metadata
 from app.utils.media import resolve_media_url
 from app.utils.roles import ROLE_STUDENT, normalize_role, role_at_least
 from app.utils.security import api_key_required
@@ -84,6 +85,7 @@ def material_to_dict(m: Material) -> dict:
 
 
 def ra_material_to_dict(m: Material) -> dict:
+    image_metadata = material_image_metadata(m.image_ref)
     career_name = m.career.name if m.career else None
     career_short = "".join(
         token[0] for token in (career_name or "").split() if token and token[0].isalnum()
@@ -100,6 +102,10 @@ def ra_material_to_dict(m: Material) -> dict:
         "tutorial_url": m.tutorial_url,
         "image_ref": m.image_ref,
         "image_url": resolve_media_url(m.image_ref, ensure_static_file=True),
+        "image_width": image_metadata["image_width"],
+        "image_height": image_metadata["image_height"],
+        "image_orientation": image_metadata["image_orientation"],
+        "image_aspect_ratio": image_metadata["image_aspect_ratio"],
         "notes": m.notes,
         "access_scope": m.normalized_access_scope,
         "assignment": m.display_assignment,
