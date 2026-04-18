@@ -90,13 +90,16 @@
       <h2>{{ calendar_title }}</h2>
       <p class="page-subtitle">{{ calendar_subtitle }}</p>
     </div>
-    <div class="res-week-nav">
-      <a class="btn btn-ghost" href="{{ prev_url }}">← Semana anterior</a>
-      <a class="btn btn-ghost" href="{{ next_url }}">Semana siguiente →</a>
-    </div>
   </div>
 
   <form method="get" action="{{ filter_action }}" class="reservation-calendar-filter" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+    <div class="toolbar-group" style="min-width:200px; margin:0;">
+      <label>Fecha base</label>
+      <div class="search-box">
+        <i class="ph ph-calendar search-icon"></i>
+        <input type="date" name="date" value="{{ selected_date.isoformat() }}" min="{{ today.isoformat() }}" required>
+      </div>
+    </div>
     <div class="toolbar-group" style="min-width:180px; margin:0;">
       <label>Filtrar por edificio</label>
       <div class="select-wrap">
@@ -130,7 +133,6 @@
       </div>
     </div>
     {% endif %}
-    <input type="hidden" name="week_start" value="{{ week_start.isoformat() }}">
     <button type="submit" class="btn btn-ghost">Aplicar</button>
     <a class="btn btn-ghost" href="{{ clear_url }}">Limpiar</a>
   </form>
