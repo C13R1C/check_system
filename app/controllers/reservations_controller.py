@@ -200,6 +200,18 @@ def build_week_days(week_start):
     return [week_start + timedelta(days=i) for i in range(7)]
 
 
+def _coerce_base_date(raw_value: str | None):
+    today = datetime.today().date()
+    candidate = (raw_value or "").strip()
+    if not candidate:
+        return today
+    try:
+        parsed = parse_date(candidate)
+    except ValueError:
+        return today
+    return parsed if parsed >= today else today
+
+
 
 def _format_ampm(time_value) -> str:
     return datetime.combine(datetime.today(), time_value).strftime("%I:%M %p").lstrip("0")
@@ -428,14 +440,10 @@ def request_reservation():
     if is_admin_role(current_user.role):
         return redirect(url_for("reservations.admin_queue"))
 
-    week_start_s = (request.args.get("week_start") or "").strip()
+    selected_date_s = (request.args.get("date") or request.args.get("week_start") or "").strip()
     calendar_room = (request.args.get("calendar_room") or "").strip()
     calendar_building = (request.args.get("calendar_building") or "").strip().upper()
-
-    try:
-        base_date = parse_date(week_start_s) if week_start_s else datetime.today().date()
-    except ValueError:
-        base_date = datetime.today().date()
+    base_date = _coerce_base_date(selected_date_s)
 
     week_start = get_week_start(base_date)
     week_days = build_week_days(week_start)
@@ -484,9 +492,6 @@ def request_reservation():
                 "state": cell_state,
             }
         )
-
-    prev_week = week_start - timedelta(days=7)
-    next_week = week_start + timedelta(days=7)
 
     is_professor = _is_professor_role(current_user.role)
     assignments = _professor_assignments(current_user.id) if is_professor else []
@@ -658,19 +663,19 @@ def request_reservation():
         calendar_rooms_by_building=calendar_rooms_by_building,
         calendar_filter_rooms=available_calendar_rooms,
         week_days=week_days,
-        week_start=week_start,
         week_end=week_end,
         week_schedule=week_schedule,
         calendar_rooms=calendar_rooms,
+        selected_date=base_date,
+        selected_date_iso=base_date.isoformat(),
         selected_calendar_building=selected_calendar_building,
         selected_calendar_room=selected_calendar_room,
         selected_calendar_day=selected_calendar_day,
         day_filter_active=day_filter_active,
         daily_schedule=daily_schedule,
         today=datetime.today().date(),
+        today_iso=datetime.today().date().isoformat(),
         calendar_now=datetime.now(),
-        prev_week=prev_week,
-        next_week=next_week,
         student_group_name=(current_user.group_name or "").strip() if _is_student_role(current_user.role) else "",
     )
 
@@ -691,20 +696,14 @@ def request_reservation():
 @min_role_required("ADMIN")
 def admin_queue():
 
-    week_start_s = (request.args.get("week_start") or "").strip()
+    selected_date_s = (request.args.get("date") or request.args.get("week_start") or "").strip()
     calendar_room = (request.args.get("calendar_room") or "").strip()
     calendar_building = (request.args.get("calendar_building") or "").strip().upper()
-
-    try:
-        base_date = parse_date(week_start_s) if week_start_s else datetime.today().date()
-    except ValueError:
-        base_date = datetime.today().date()
+    base_date = _coerce_base_date(selected_date_s)
 
     week_start = get_week_start(base_date)
     week_days = build_week_days(week_start)
     week_end = week_days[-1]
-    prev_week = week_start - timedelta(days=7)
-    next_week = week_start + timedelta(days=7)
 
     calendar_buildings = sorted({room[:1] for room in ROOMS})
     selected_calendar_building = calendar_building if calendar_building in calendar_buildings else ""
@@ -716,31 +715,48 @@ def admin_queue():
         rooms_scope=available_calendar_rooms,
     )
 
-    pending = (
+    pending_for_selected_day = (
         Reservation.query
         .options(
             joinedload(Reservation.items).joinedload(ReservationItem.material),
             joinedload(Reservation.user)
         )
         .filter(Reservation.status == ReservationStatus.PENDING)
+        .filter(Reservation.date == base_date)
+        .order_by(Reservation.start_time.asc(), Reservation.created_at.asc())
+        .all()
+    )
+    future_pending = (
+        Reservation.query
+        .options(
+            joinedload(Reservation.items).joinedload(ReservationItem.material),
+            joinedload(Reservation.user)
+        )
+        .filter(Reservation.status == ReservationStatus.PENDING)
+        .filter(Reservation.date > base_date)
         .order_by(Reservation.created_at.asc())
         .all()
     )
-    signature_url_map = {r.id: _signature_asset_url(getattr(r, "signature_ref", None)) for r in pending}
+    signature_url_map = {
+        r.id: _signature_asset_url(getattr(r, "signature_ref", None))
+        for r in (pending_for_selected_day + future_pending)
+    }
     base_context = dict(
-        reservations=pending,
+        reservations=pending_for_selected_day,
+        future_reservations=future_pending,
+        selected_date=base_date,
+        selected_date_iso=base_date.isoformat(),
         signature_url_map=signature_url_map,
         week_days=week_days,
-        week_start=week_start,
         week_end=week_end,
-        prev_week=prev_week,
-        next_week=next_week,
         week_schedule=week_schedule,
         calendar_rooms=calendar_rooms,
         calendar_buildings=calendar_buildings,
         calendar_filter_rooms=available_calendar_rooms,
         selected_calendar_building=selected_calendar_building,
         selected_calendar_room=selected_calendar_room,
+        today=datetime.today().date(),
+        today_iso=datetime.today().date().isoformat(),
         calendar_now=datetime.now(),
         active_page="reservations"
     )
