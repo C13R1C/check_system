@@ -7,8 +7,6 @@
 {% endif %}
 {% set filter_action = url_for('reservations.request_reservation') %}
 {% set clear_url = url_for('reservations.request_reservation') %}
-{% set prev_url = url_for('reservations.request_reservation', week_start=prev_week.isoformat(), calendar_building=selected_calendar_building, calendar_room=selected_calendar_room, calendar_day=selected_calendar_day.isoformat() if day_filter_active else None) %}
-{% set next_url = url_for('reservations.request_reservation', week_start=next_week.isoformat(), calendar_building=selected_calendar_building, calendar_room=selected_calendar_room, calendar_day=selected_calendar_day.isoformat() if day_filter_active else None) %}
-{% set include_day_filter = true %}
+{% set include_day_filter = false %}
 {% set interactive_slots = false %}
 {% include "components/reservation_weekly_grid.html" %}

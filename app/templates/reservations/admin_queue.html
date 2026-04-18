@@ -66,6 +66,7 @@
 </header>
 
 {% set nombres_dia = {0:'Lunes',1:'Martes',2:'Miércoles',3:'Jueves',4:'Viernes',5:'Sábado',6:'Domingo'} %}
+{% set selected_day_label = nombres_dia[selected_date.weekday()] ~ ' ' ~ selected_date.strftime('%d/%m/%Y') %}
 <div id="reservations-admin-queue-container">
   <section class="toolbar-card">
     <div class="toolbar-actions">
@@ -75,14 +76,17 @@
     </div>
   </section>
 
-  {% if reservations|length == 0 %}
-    <section class="empty-state">
-      <i class="ph ph-calendar-check empty-icon"></i>
-      <h3>Sin pendientes</h3>
-      <p>No hay reservas pendientes.</p>
-    </section>
-  {% else %}
-    <section class="table-card">
+  <section class="table-card">
+      <div style="padding: 12px 14px 0;">
+        <h3 style="margin:0;">Reservas pendientes ({{ selected_day_label }})</h3>
+      </div>
+      {% if reservations|length == 0 %}
+      <div class="empty-state" style="margin-top: 4px;">
+        <i class="ph ph-calendar-check empty-icon"></i>
+        <h3>Sin pendientes para la fecha seleccionada</h3>
+        <p>No hay solicitudes pendientes para {{ selected_day_label }}.</p>
+      </div>
+      {% else %}
       <div class="table-wrap">
         <table class="inventory-table table-mobile-cards" style="min-width: 1450px;">
           <thead>
@@ -137,8 +141,76 @@
           </tbody>
         </table>
       </div>
-    </section>
-  {% endif %}
+      {% endif %}
+  </section>
+
+  <section class="table-card">
+    <div style="padding: 12px 14px 0;">
+      <h3 style="margin:0;">Reservas futuras</h3>
+    </div>
+    {% if future_reservations|length == 0 %}
+    <div class="empty-state" style="margin-top: 4px;">
+      <i class="ph ph-calendar-blank empty-icon"></i>
+      <h3>Sin reservas futuras</h3>
+      <p>No hay solicitudes pendientes para fechas posteriores.</p>
+    </div>
+    {% else %}
+    <div class="table-wrap">
+      <table class="inventory-table table-mobile-cards" style="min-width: 1450px;">
+        <thead>
+          <tr>
+            <th>Solicitante</th>
+            <th>Usuario</th>
+            <th>Lab solicitado</th>
+            <th>Grupo</th>
+            <th>Fecha</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Motivo</th>
+            <th>Firma</th>
+            <th class="th-actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in future_reservations %}
+          <tr>
+            <td data-label="Solicitante" class="queue-requester">{{ (r.user.full_name or '')|trim or r.user.email }}</td>
+            <td data-label="Usuario">{{ r.user.email }}</td>
+            <td data-label="Lab solicitado">{{ r.room }}</td>
+            <td data-label="Grupo">{{ r.group_name }}</td>
+            <td data-label="Fecha">{{ r.date }}</td>
+            <td data-label="Inicio">{{ r.start_time }}</td>
+            <td data-label="Fin">{{ r.end_time }}</td>
+            <td data-label="Motivo">{{ r.purpose or '-' }}</td>
+            <td data-label="Firma">
+              {% set sign_url = signature_url_map.get(r.id) if signature_url_map else None %}
+              {% if sign_url %}
+                <button type="button" class="btn btn-ghost" onclick="openSignatureModal('{{ sign_url }}')">Ver firma</button>
+              {% elif r.signed %}
+                <span class="status-badge status-warn">Firma no disponible</span>
+              {% else %}
+                <span class="status-badge status-bad">Sin firma</span>
+              {% endif %}
+            </td>
+            <td data-label="Acciones">
+              <form method="post" class="reservation-admin-action-form">
+                <label for="admin-note-future-{{ r.id }}" style="font-size:.86rem; color:var(--text-dim); font-weight:700;">
+                  Nota / motivo de rechazo
+                </label>
+                <textarea id="admin-note-future-{{ r.id }}" name="admin_note" rows="3" placeholder="Ej. Falta evidencia, ajuste de horario, observación de aprobación..." class="form-control js-uppercase-safe"></textarea>
+                <div class="reservation-admin-row-actions">
+                  <button type="submit" formaction="{{ url_for('reservations.admin_approve', res_id=r.id) }}" class="btn btn-gold">Aprobar</button>
+                  <button type="submit" formaction="{{ url_for('reservations.admin_reject', res_id=r.id) }}" class="btn btn-danger">Rechazar</button>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
 </div>
 
 <div id="adminCalendarContent">
@@ -252,6 +324,7 @@ function bindAdminCalendarAsyncFilters() {
   const clearBtn = form.querySelector('a.btn.btn-ghost:last-of-type');
   const buildingSelect = form.querySelector("#buildingSelect");
   const roomSelect = form.querySelector("#roomSelect");
+  const dateInput = form.querySelector('input[name="date"]');
 
   const syncRoomOptionsByBuilding = () => {
     if (!buildingSelect || !roomSelect) return;
@@ -294,6 +367,9 @@ function bindAdminCalendarAsyncFilters() {
   });
 
   roomSelect?.addEventListener("change", () => {
+    refreshCalendar(new URLSearchParams(new FormData(form)));
+  });
+  dateInput?.addEventListener("change", () => {
     refreshCalendar(new URLSearchParams(new FormData(form)));
   });
 

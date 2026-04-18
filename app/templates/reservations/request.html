@@ -613,7 +613,7 @@ function bindCalendarAsyncFilters() {
     refreshCalendar(new URLSearchParams());
   });
 
-  [buildingSelect, roomSelect, form.querySelector('input[name="calendar_day"]')].forEach((field) => {
+  [buildingSelect, roomSelect, form.querySelector('input[name="date"]'), form.querySelector('input[name="calendar_day"]')].forEach((field) => {
     field?.addEventListener("change", () => {
       const params = new URLSearchParams(new FormData(form));
       refreshCalendar(params);
