@@ -97,7 +97,7 @@
       <label>Fecha base</label>
       <div class="search-box">
         <i class="ph ph-calendar search-icon"></i>
-        <input type="date" name="date" value="{{ selected_date.isoformat() }}" min="{{ today.isoformat() }}" required>
+        <input type="date" name="date" value="{{ selected_date_iso or selected_date }}" min="{{ today_iso or today }}" required>
       </div>
     </div>
     <div class="toolbar-group" style="min-width:180px; margin:0;">

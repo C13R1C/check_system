@@ -3,7 +3,7 @@
   {% set nombres_dia = {0:'Lunes',1:'Martes',2:'Miércoles',3:'Jueves',4:'Viernes',5:'Sábado',6:'Domingo'} %}
   {% set calendar_subtitle = nombres_dia[selected_calendar_day.weekday()] ~ ' ' ~ selected_calendar_day.strftime('%d/%m/%Y') %}
 {% else %}
-  {% set calendar_subtitle = "Semana del " ~ week_start.strftime('%d/%m/%Y') ~ " al " ~ week_end.strftime('%d/%m/%Y') %}
+  {% set calendar_subtitle = "Semana del " ~ week_days[0].strftime('%d/%m/%Y') ~ " al " ~ week_days[-1].strftime('%d/%m/%Y') %}
 {% endif %}
 {% set filter_action = url_for('reservations.request_reservation') %}
 {% set clear_url = url_for('reservations.request_reservation') %}
