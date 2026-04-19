@@ -76,6 +76,28 @@ textarea{
   font: inherit;
 }
 
+/* Iconografía base (Phosphor + Font Awesome en RA) */
+.ph,
+.fa-solid,
+.fa-regular,
+.fa-brands{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+  font-style: normal;
+  flex-shrink: 0;
+}
+
+.icon-inline{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  vertical-align:middle;
+  line-height:1;
+}
+
 /* Layout */
 .app-layout{
   display: flex;
@@ -767,6 +789,19 @@ textarea.form-control{
   white-space: nowrap;
 }
 
+.btn i{
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-icon{
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+}
+
 .btn-gold{
   background: linear-gradient(180deg, var(--gold-2), var(--gold));
   color: #2a220f;
@@ -1060,6 +1095,10 @@ textarea.form-control{
   font-size: 2.5rem;
   color: var(--gold);
   margin-bottom: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-state h3{
