@@ -697,6 +697,7 @@ def request_reservation():
 def admin_queue():
 
     selected_date_s = (request.args.get("date") or request.args.get("week_start") or "").strip()
+    show_future = (request.args.get("show_future") or "").strip() == "1"
     calendar_room = (request.args.get("calendar_room") or "").strip()
     calendar_building = (request.args.get("calendar_building") or "").strip().upper()
     base_date = _coerce_base_date(selected_date_s)
@@ -744,6 +745,7 @@ def admin_queue():
     base_context = dict(
         reservations=pending_for_selected_day,
         future_reservations=future_pending,
+        show_future=show_future,
         selected_date=base_date,
         selected_date_iso=base_date.isoformat(),
         signature_url_map=signature_url_map,

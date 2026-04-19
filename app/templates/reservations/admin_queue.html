@@ -69,10 +69,22 @@
 {% set selected_day_label = nombres_dia[selected_date.weekday()] ~ ' ' ~ selected_date.strftime('%d/%m/%Y') %}
 <div id="reservations-admin-queue-container">
   <section class="toolbar-card">
-    <div class="toolbar-actions">
+    <div class="toolbar-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
       <a class="btn btn-ghost" href="{{ url_for('reservations.admin_approved') }}">
+        <i class="ph ph-calendar-check"></i>
         Ver reservas en curso
       </a>
+      {% if show_future %}
+      <a class="btn btn-ghost" href="{{ url_for('reservations.admin_queue', date=selected_date_iso, calendar_building=selected_calendar_building, calendar_room=selected_calendar_room) }}">
+        <i class="ph ph-eye-slash"></i>
+        Ocultar reservas futuras
+      </a>
+      {% else %}
+      <a class="btn btn-ghost" href="{{ url_for('reservations.admin_queue', date=selected_date_iso, show_future=1, calendar_building=selected_calendar_building, calendar_room=selected_calendar_room) }}">
+        <i class="ph ph-calendar"></i>
+        Ver reservas futuras{% if future_reservations %} ({{ future_reservations|length }}){% endif %}
+      </a>
+      {% endif %}
     </div>
   </section>
 
@@ -144,13 +156,14 @@
       {% endif %}
   </section>
 
+  {% if show_future %}
   <section class="table-card">
     <div style="padding: 12px 14px 0;">
       <h3 style="margin:0;">Reservas futuras</h3>
     </div>
     {% if future_reservations|length == 0 %}
     <div class="empty-state" style="margin-top: 4px;">
-      <i class="ph ph-calendar-blank empty-icon"></i>
+      <i class="ph ph-calendar empty-icon"></i>
       <h3>Sin reservas futuras</h3>
       <p>No hay solicitudes pendientes para fechas posteriores.</p>
     </div>
@@ -211,6 +224,7 @@
     </div>
     {% endif %}
   </section>
+  {% endif %}
 </div>
 
 <div id="adminCalendarContent">
