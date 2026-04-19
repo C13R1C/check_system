@@ -214,7 +214,7 @@
 
 <div class="calendar-toggle" onclick="toggleCalendar()" role="button" tabindex="0" aria-expanded="false" aria-controls="calendarContainer">
   <span class="calendar-toggle-main">
-    <i class="ph ph-calendar-blank"></i>
+    <i class="ph ph-calendar"></i>
     <span>Ver ocupación semanal de laboratorios</span>
   </span>
   <span class="calendar-toggle-caret" aria-hidden="true"><i class="ph ph-caret-down"></i></span>
@@ -613,7 +613,7 @@ function bindCalendarAsyncFilters() {
     refreshCalendar(new URLSearchParams());
   });
 
-  [buildingSelect, roomSelect, form.querySelector('input[name="calendar_day"]')].forEach((field) => {
+  [buildingSelect, roomSelect, form.querySelector('input[name="date"]'), form.querySelector('input[name="calendar_day"]')].forEach((field) => {
     field?.addEventListener("change", () => {
       const params = new URLSearchParams(new FormData(form));
       refreshCalendar(params);
