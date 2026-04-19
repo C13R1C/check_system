@@ -34,6 +34,16 @@ from app.utils.roles import (
 HEADER_NOTIFICATIONS_CACHE_TTL_SECONDS = 5
 _header_notifications_cache_lock = threading.Lock()
 _header_notifications_cache: dict[int, dict] = {}
+_CSP_DIRECTIVES = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+    "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+    "img-src": ["'self'", "data:", "blob:"],
+    "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'"],
+    "frame-src": ["'self'"],
+    "media-src": ["'self'", "blob:"],
+}
 
 
 def create_app():
@@ -284,5 +294,14 @@ def create_app():
         except Exception:
             pass
         db.session.remove()
+
+    @app.after_request
+    def apply_security_headers(response):
+        csp_header_value = "; ".join(
+            f"{directive} {' '.join(sources)}"
+            for directive, sources in _CSP_DIRECTIVES.items()
+        )
+        response.headers.setdefault("Content-Security-Policy", csp_header_value)
+        return response
 
     return app
