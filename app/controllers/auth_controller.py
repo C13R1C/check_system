@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -21,6 +21,7 @@ from app.utils.validators import is_valid_utpn_email
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 EMAIL_CHANGE_LIMIT_PER_HOUR = 3
+VERIFY_EMAIL_TTL = timedelta(hours=1)
 
 
 def _requires_profile_completion(role: str | None) -> bool:
@@ -77,6 +78,34 @@ def _is_accept_terms_valid(raw_value) -> bool:
     return str(raw_value).strip().lower() in {"1", "true", "on", "yes"}
 
 
+def _as_utc(dt: datetime | None) -> datetime | None:
+    if not isinstance(dt, datetime):
+        return None
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _is_unverified_user_expired(user: User, now_utc: datetime | None = None) -> bool:
+    if getattr(user, "is_verified", False):
+        return False
+    created_at_utc = _as_utc(getattr(user, "created_at", None))
+    if created_at_utc is None:
+        return False
+    current_utc = now_utc or datetime.now(timezone.utc)
+    return created_at_utc <= (current_utc - VERIFY_EMAIL_TTL)
+
+
+def _hard_delete_unverified_user_if_expired(user: User, now_utc: datetime | None = None) -> bool:
+    if not _is_unverified_user_expired(user, now_utc=now_utc):
+        return False
+    db.session.delete(user)
+    db.session.commit()
+    return True
+
+
 @auth_bp.route("/", methods=["GET"])
 def auth_page():
     if current_user.is_authenticated:
@@ -110,6 +139,13 @@ def login():
             return redirect(url_for("auth.auth_page", mode="login"))
 
         if not user.is_verified:
+            if _hard_delete_unverified_user_if_expired(user):
+                _clear_pending_verify_session()
+                flash(
+                    "Tu registro pendiente expiró y fue eliminado. Regístrate nuevamente para continuar.",
+                    "warning",
+                )
+                return redirect(url_for("auth.auth_page", mode="register"))
             _store_pending_verify_user(user)
             flash("Verifica tu correo institucional para continuar.", "info")
             return redirect(url_for("auth.auth_page", mode="login"))
@@ -225,9 +261,25 @@ def register():
 
 @auth_bp.route("/verify/<token>", methods=["GET"])
 def verify(token):
-    token_data = confirm_verify_token(token, max_age_seconds=3600)
+    now_utc = datetime.now(timezone.utc)
+    token_data = confirm_verify_token(token, max_age_seconds=int(VERIFY_EMAIL_TTL.total_seconds()))
     if not token_data:
-        if peek_verify_token(token):
+        peek_data = peek_verify_token(token)
+        if peek_data:
+            email = str(peek_data.get("email") or "").strip().lower()
+            user = None
+            if email:
+                try:
+                    user = User.query.filter_by(email=email).first()
+                except Exception:
+                    user = None
+            if user and _hard_delete_unverified_user_if_expired(user, now_utc=now_utc):
+                _clear_pending_verify_session()
+                flash(
+                    "El enlace expiró y tu registro pendiente fue eliminado. Regístrate nuevamente.",
+                    "warning",
+                )
+                return redirect(url_for("auth.auth_page", mode="register"))
             flash("El enlace de verificación expiró. Solicita uno nuevo.", "warning")
         else:
             flash("El enlace de verificación no es válido.", "error")
@@ -240,6 +292,13 @@ def verify(token):
     if not user:
         flash("El enlace de verificación no es válido.", "error")
         return redirect(url_for("auth.auth_page", mode="login"))
+    if _hard_delete_unverified_user_if_expired(user, now_utc=now_utc):
+        _clear_pending_verify_session()
+        flash(
+            "El enlace expiró y tu registro pendiente fue eliminado. Regístrate nuevamente.",
+            "warning",
+        )
+        return redirect(url_for("auth.auth_page", mode="register"))
     if token_version != (user.verify_token_version or 0):
         flash("El enlace de verificación no es válido.", "error")
         return redirect(url_for("auth.auth_page", mode="login"))
@@ -268,6 +327,19 @@ def change_email():
 
     if user.is_verified:
         return jsonify({"error": "La cuenta ya está verificada. No es necesario cambiar correo."}), 400
+    if _hard_delete_unverified_user_if_expired(user):
+        _clear_pending_verify_session()
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Tu registro pendiente expiró y fue eliminado. "
+                        "Debes registrarte nuevamente."
+                    )
+                }
+            ),
+            410,
+        )
 
     now = datetime.utcnow()
     window_start = user.email_change_window_started_at
