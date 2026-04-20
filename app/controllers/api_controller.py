@@ -88,7 +88,7 @@ def _extract_material_id(raw_value) -> int | None:
     if match:
         return int(match.group(1))
 
-    match = re.search(r"/materials/(\d+)(?:$|[/?#])", value, flags=re.IGNORECASE)
+    match = re.fullmatch(r".*/materials/(\d+)", value, flags=re.IGNORECASE)
     if match:
         return int(match.group(1))
 
@@ -98,18 +98,21 @@ def _extract_material_id(raw_value) -> int | None:
 def _ra_get_material_payload(material_id: int):
     user, resolve_error = _resolve_ra_user(request.args.get("user_email"))
     if resolve_error:
-        payload, status = resolve_error
-        return jsonify(payload), status
+        _payload, status = resolve_error
+        if status == 403:
+            return jsonify({"ok": False, "error": "forbidden"}), 403
+        return jsonify({"ok": False, "error": "forbidden"}), 403
 
     current_app.logger.info("RA GET material %s by %s", material_id, user.email)
 
     m = Material.query.get(material_id)
     if not m:
-        return jsonify({"error": "Material no encontrado"}), 404
+        return jsonify({"ok": False, "error": "material_not_found"}), 404
 
     is_allowed, access_error = _can_user_access_ra_material(user, m)
     if not is_allowed:
-        return jsonify({"error": access_error}), 403
+        _ = access_error
+        return jsonify({"ok": False, "error": "forbidden"}), 403
 
     return jsonify({"ok": True, "material": ra_material_to_dict(m)}), 200
 
@@ -214,17 +217,8 @@ def ra_get_material_from_qr():
     raw_material = request.args.get("material_id") or request.args.get("qr")
     material_id = _extract_material_id(raw_material)
     if material_id is None:
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "material_id inválido. Usa un entero claro o formato compatible "
-                        "(2, material:2, material_id=2, .../materials/2)."
-                    )
-                }
-            ),
-            400,
-        )
+        current_app.logger.warning("RA QR parse failed on GET /api/ra/materials: %r", raw_material)
+        return jsonify({"ok": False, "error": "invalid_qr_format"}), 400
     return _ra_get_material_payload(material_id)
 
 
@@ -247,25 +241,17 @@ def ra_event():
     if raw_material_id is not None:
         material_id = _extract_material_id(raw_material_id)
         if material_id is None:
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            "material_id inválido. Usa un entero claro o formato compatible "
-                            "(2, material:2, material_id=2, .../materials/2)."
-                        )
-                    }
-                ),
-                400,
-            )
+            current_app.logger.warning("RA QR parse failed on POST /api/ra/events: %r", raw_material_id)
+            return jsonify({"ok": False, "error": "invalid_qr_format"}), 400
 
     if material_id is not None:
         m = Material.query.get(material_id)
         if not m:
-            return jsonify({"error": "material_id no existe"}), 400
+            return jsonify({"ok": False, "error": "material_not_found"}), 404
         is_allowed, access_error = _can_user_access_ra_material(user, m)
         if not is_allowed:
-            return jsonify({"error": access_error}), 403
+            _ = access_error
+            return jsonify({"ok": False, "error": "forbidden"}), 403
 
     current_app.logger.info("RA EVENT %s material %s", event_type, material_id)
 

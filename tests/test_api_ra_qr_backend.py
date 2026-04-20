@@ -44,7 +44,7 @@ class RaBackendQrTests(unittest.TestCase):
     def test_get_material_from_qr_invalid_format(self):
         response = self.client.get("/api/ra/materials?qr=material:2:3")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("material_id inválido", response.get_json().get("error", ""))
+        self.assertEqual(response.get_json(), {"ok": False, "error": "invalid_qr_format"})
 
     @patch("app.controllers.api_controller.Material")
     @patch("app.controllers.api_controller._resolve_ra_user")
@@ -58,7 +58,7 @@ class RaBackendQrTests(unittest.TestCase):
         response = self.client.get("/api/ra/materials?qr=/materials/999")
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.get_json(), {"error": "Material no encontrado"})
+        self.assertEqual(response.get_json(), {"ok": False, "error": "material_not_found"})
 
     @patch("app.controllers.api_controller._resolve_ra_user")
     def test_get_material_from_qr_permission_denied(self, resolve_user_mock):
@@ -67,7 +67,16 @@ class RaBackendQrTests(unittest.TestCase):
         response = self.client.get("/api/ra/materials?qr=2")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.get_json(), {"error": "rol no autorizado para RA"})
+        self.assertEqual(response.get_json(), {"ok": False, "error": "forbidden"})
+
+    @patch("app.controllers.api_controller._resolve_ra_user")
+    def test_get_material_by_path_permission_denied_matches_query_behavior(self, resolve_user_mock):
+        resolve_user_mock.return_value = (None, ({"error": "rol no autorizado para RA"}, 403))
+
+        response = self.client.get("/api/ra/materials/2")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {"ok": False, "error": "forbidden"})
 
     @patch("app.controllers.api_controller.log_event")
     @patch("app.controllers.api_controller.db")
@@ -89,6 +98,18 @@ class RaBackendQrTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json().get("ok"), True)
         db_mock.session.commit.assert_called_once()
+
+    @patch("app.controllers.api_controller._resolve_ra_user")
+    def test_ra_event_invalid_format_returns_consistent_400(self, resolve_user_mock):
+        resolve_user_mock.return_value = (SimpleNamespace(id=1, email="student@utpn.edu.mx"), None)
+
+        response = self.client.post(
+            "/api/ra/events",
+            json={"event_type": "scan", "material_id": "material:2:3", "user_email": "student@utpn.edu.mx"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"ok": False, "error": "invalid_qr_format"})
 
 
 if __name__ == "__main__":
