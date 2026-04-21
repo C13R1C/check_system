@@ -52,16 +52,24 @@
           <td><strong>Código QR</strong></td>
           <td>
             {% if material.code %}
-              {{ material.code }}
+              <div><code>{{ material.code }}</code></div>
             {% else %}
+              <div><span>Sin código asignado</span></div>
+            {% endif %}
+
+            {% if qr_image_src %}
+              <div style="margin-top:8px;">
+                <img src="{{ qr_image_src }}" alt="QR material {{ material.id }}" style="width:160px;height:160px;border:1px solid rgba(0,0,0,.08);border-radius:8px;background:#fff;">
+              </div>
+            {% elif current_user.is_authenticated and is_admin_role(current_user.role) and qr_needs_generation %}
               <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                <span>Sin QR generado</span>
-                {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+                <span>QR pendiente de generar/corregir</span>
                 <form method="post" action="{{ url_for('inventory.admin_generate_material_qr', material_id=material.id) }}" data-single-submit>
                   <button type="submit" class="btn btn-ghost" data-submit-label="Generando...">Generar QR</button>
                 </form>
-                {% endif %}
               </div>
+            {% elif qr_needs_generation %}
+              <div style="margin-top:8px;color:var(--text-dim);">QR no disponible actualmente.</div>
             {% endif %}
           </td>
         </tr>

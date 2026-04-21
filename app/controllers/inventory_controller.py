@@ -1,5 +1,6 @@
 import os
 import re
+import importlib
 from math import ceil
 from uuid import uuid4
 
@@ -272,7 +273,36 @@ def _status_form_defaults(material: Material | None, form_data: dict) -> tuple[s
 
 
 def _generate_material_qr_value(material: Material) -> str:
-    return f"material:{material.id}"
+    return str(material.id)
+
+
+def _material_qr_rel_path(material: Material) -> str:
+    return os.path.join("uploads", "qrs", "materials", f"{material.id}.png")
+
+
+def _material_qr_abs_path(material: Material) -> str:
+    return os.path.join(current_app.root_path, "static", _material_qr_rel_path(material))
+
+
+def _material_qr_png_exists(material: Material) -> bool:
+    return os.path.isfile(_material_qr_abs_path(material))
+
+
+def _material_qr_image_src(material: Material) -> str | None:
+    if not _material_qr_png_exists(material):
+        return None
+    rel_path = _material_qr_rel_path(material).replace(os.sep, "/")
+    return url_for("static", filename=rel_path)
+
+
+def _ensure_material_qr_png(material: Material, qr_value: str) -> None:
+    qrcode_module = importlib.import_module("qrcode")
+    abs_path = _material_qr_abs_path(material)
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+    qr = qrcode_module.QRCode(version=None, box_size=10, border=4)
+    qr.add_data(qr_value)
+    qr.make(fit=True)
+    qr.make_image(fill_color="black", back_color="white").save(abs_path)
 
 
 @inventory_bp.route("/", methods=["GET"])
@@ -355,10 +385,16 @@ def material_detail(material_id: int):
     if not Material.user_can_access(m, current_user):
         flash("No tienes acceso a este material por su visibilidad.", "error")
         return redirect(url_for("inventory.inventory_list"))
+    expected_qr_code = _generate_material_qr_value(m)
+    qr_png_exists = _material_qr_png_exists(m)
     return render_template(
         "inventory/material_detail.html",
         material=m,
         material_image_src=_material_image_src(m),
+        expected_qr_code=expected_qr_code,
+        qr_png_exists=qr_png_exists,
+        qr_image_src=_material_qr_image_src(m),
+        qr_needs_generation=(m.code != expected_qr_code) or (not qr_png_exists),
         active_page="inventory",
     )
 
@@ -367,12 +403,16 @@ def material_detail(material_id: int):
 @min_role_required("ADMIN")
 def admin_generate_material_qr(material_id: int):
     material = Material.query.get_or_404(material_id)
-    if material.code and material.code.strip():
+    expected_code = _generate_material_qr_value(material)
+    qr_png_exists = _material_qr_png_exists(material)
+
+    if material.code == expected_code and qr_png_exists:
         flash("Este material ya tiene QR generado.", "info")
         return redirect(url_for("inventory.material_detail", material_id=material.id))
 
     try:
-        material.code = _generate_material_qr_value(material)
+        _ensure_material_qr_png(material, expected_code)
+        material.code = expected_code
         log_event(
             module="INVENTORY",
             action="MATERIAL_QR_GENERATED",
