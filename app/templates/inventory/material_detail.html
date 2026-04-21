@@ -48,6 +48,23 @@
         <tr><td><strong>Ubicación</strong></td><td>{{ material.location | smart_title }}</td></tr>
         <tr><td><strong>Marca</strong></td><td>{{ (material.brand or '-') | upper }}</td></tr>
         <tr><td><strong>Modelo</strong></td><td>{{ (material.model or '-') | upper }}</td></tr>
+        <tr>
+          <td><strong>Código QR</strong></td>
+          <td>
+            {% if material.code %}
+              {{ material.code }}
+            {% else %}
+              <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                <span>Sin QR generado</span>
+                {% if current_user.is_authenticated and is_admin_role(current_user.role) %}
+                <form method="post" action="{{ url_for('inventory.admin_generate_material_qr', material_id=material.id) }}" data-single-submit>
+                  <button type="submit" class="btn btn-ghost" data-submit-label="Generando...">Generar QR</button>
+                </form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
         <tr><td><strong>Observaciones</strong></td><td>{{ (material.notes or 'Sin observaciones') | upper }}</td></tr>
         {% if material_image_src %}
           <tr><td><strong>Imagen</strong></td><td><img src="{{ material_image_src }}" alt="{{ material.name }}" class="js-image-preview content-image-previewable" style="max-width:340px;width:100%;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;"></td></tr>
