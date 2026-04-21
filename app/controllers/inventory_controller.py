@@ -271,6 +271,10 @@ def _status_form_defaults(material: Material | None, form_data: dict) -> tuple[s
     return _split_tool_status(source_status)
 
 
+def _generate_material_qr_value(material: Material) -> str:
+    return f"material:{material.id}"
+
+
 @inventory_bp.route("/", methods=["GET"])
 @min_role_required("STUDENT")
 def inventory_list():
@@ -357,6 +361,34 @@ def material_detail(material_id: int):
         material_image_src=_material_image_src(m),
         active_page="inventory",
     )
+
+
+@inventory_bp.route("/admin/<int:material_id>/generate-qr", methods=["POST"])
+@min_role_required("ADMIN")
+def admin_generate_material_qr(material_id: int):
+    material = Material.query.get_or_404(material_id)
+    if material.code and material.code.strip():
+        flash("Este material ya tiene QR generado.", "info")
+        return redirect(url_for("inventory.material_detail", material_id=material.id))
+
+    try:
+        material.code = _generate_material_qr_value(material)
+        log_event(
+            module="INVENTORY",
+            action="MATERIAL_QR_GENERATED",
+            user_id=current_user.id,
+            material_id=material.id,
+            entity_label=f"Material #{material.id}",
+            description=f"QR generado para material: {material.name}",
+            metadata={"material_id": material.id, "qr_value": material.code},
+        )
+        db.session.commit()
+        flash("QR generado correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        flash("No se pudo generar el QR del material.", "error")
+
+    return redirect(url_for("inventory.material_detail", material_id=material.id))
 
 
 @inventory_bp.route("/admin/new", methods=["GET", "POST"])
