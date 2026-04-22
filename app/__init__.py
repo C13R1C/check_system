@@ -50,6 +50,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    @app.route("/sw.js")
+    def service_worker():
+        response = send_file(str(Path(app.root_path) / "static" / "sw.js"), mimetype="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
     app.jinja_env.globals.update(
         is_admin_role=is_admin_role,
         is_staff_role=is_staff_role,
