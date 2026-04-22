@@ -944,7 +944,8 @@
             return;
           }
 
-          const registration = await navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+          await navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+          const registration = await navigator.serviceWorker.ready;
           const existingSub = await registration.pushManager.getSubscription();
           const subscription = existingSub || await registration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -968,7 +969,8 @@
 
           createNotification({ title: "Notificaciones activadas", message: "Ahora recibirás notificaciones push del sistema.", type: "success" });
           setPushButtonState("active");
-        } catch (_) {
+        } catch (error) {
+          console.error("Push subscription flow failed", error);
           createNotification({ title: "Error de activación", message: "No fue posible activar notificaciones push.", type: "error" });
           setPushButtonState("idle");
         } finally {
