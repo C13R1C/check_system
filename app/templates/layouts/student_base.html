@@ -864,7 +864,7 @@
 
       async function unsubscribeCurrentSubscription() {
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-        const registration = await navigator.serviceWorker.getRegistration("{{ url_for('static', filename='sw.js') }}");
+        const registration = await navigator.serviceWorker.getRegistration("/");
         if (!registration) return;
         const existingSub = await registration.pushManager.getSubscription();
         if (!existingSub) return;
@@ -894,7 +894,7 @@
           return;
         }
 
-        const registration = await navigator.serviceWorker.getRegistration("{{ url_for('static', filename='sw.js') }}");
+        const registration = await navigator.serviceWorker.getRegistration("/");
         const existingSub = registration ? await registration.pushManager.getSubscription() : null;
         if (existingSub && Notification.permission === "granted") {
           setPushButtonState("active");
@@ -944,7 +944,7 @@
             return;
           }
 
-          await navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+          await navigator.serviceWorker.register("{{ url_for('service_worker') }}", { scope: "/" });
           const registration = await navigator.serviceWorker.ready;
           const existingSub = await registration.pushManager.getSubscription();
           const subscription = existingSub || await registration.pushManager.subscribe({
