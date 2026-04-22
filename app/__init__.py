@@ -59,7 +59,8 @@ def create_app():
 
     @app.route("/sw.js")
     def service_worker():
-        response = send_file(str(Path(app.root_path) / "static" / "sw.js"), mimetype="application/javascript")
+        service_worker_path = Path(app.static_folder) / "js" / "sw.js"
+        response = send_file(str(service_worker_path), mimetype="application/javascript")
         response.headers["Cache-Control"] = "no-cache"
         return response
 

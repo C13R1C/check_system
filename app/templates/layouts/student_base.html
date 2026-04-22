@@ -666,7 +666,7 @@
       const pushEnableButtons = Array.from(document.querySelectorAll("[data-push-enable-btn]"));
       const markAllBtn = document.getElementById("notifMarkAllBtn");
       const clearReadBtn = document.getElementById("notifClearReadBtn");
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
+      const csrfToken = "{{ csrf_token }}";
 
       if (!badge || !panelList || !center || !logoToggle || !notificationContainer || !markAllBtn || !clearReadBtn) return;
 
