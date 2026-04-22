@@ -1,4 +1,4 @@
-#!/home/utpn/apps/coyolabs/.venv/bin/python3
+#!/home/utpn/coyolabs/coyolabs_system/.venv/bin/python
 import sys
 from mako.cmd import cmdline
 if __name__ == '__main__':

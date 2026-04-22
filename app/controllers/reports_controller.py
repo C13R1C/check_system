@@ -71,7 +71,6 @@ DEFAULT_PDF_CURATED_COLUMNS = [
 DEFAULT_XLSX_CURATED_COLUMNS = DEFAULT_PDF_CURATED_COLUMNS[:]
 
 RESERVATIONS_DEFAULT_COLUMNS = [
-    "room",
     "group_name",
     "teacher_name",
     "subject",

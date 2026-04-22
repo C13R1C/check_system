@@ -3,7 +3,9 @@ from datetime import datetime
 from flask import url_for
 
 from app.extensions import db
+
 from app.models.reservation import Reservation
+from app.models.reservation import ReservationStatus
 from app.models.user import User
 from app.services.audit_service import log_event
 from app.services.notification_service import build_notification, build_reservation_message

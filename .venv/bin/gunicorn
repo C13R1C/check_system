@@ -1,4 +1,4 @@
-#!/home/utpn/apps/coyolabs/.venv/bin/python
+#!/home/utpn/coyolabs/coyolabs_system/.venv/bin/python
 import sys
 from gunicorn.app.wsgiapp import run
 if __name__ == '__main__':

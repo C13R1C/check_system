@@ -22,16 +22,21 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     RESEND_API_KEY = (os.getenv("RESEND_API_KEY") or "").strip()
+    RESEND_WEBHOOK_SECRET = (os.getenv("RESEND_WEBHOOK_SECRET") or "").strip()
     MAIL_DEFAULT_SENDER = (os.getenv("MAIL_DEFAULT_SENDER") or "").strip()
 
     APP_BASE_URL = (
-        os.getenv("APP_BASE_URL") or "http://127.0.0.1:5000"
+    os.getenv("APP_BASE_URL") or "https://coyolabs.com"
     ).strip().rstrip("/")
 
     RA_API_KEY = (os.getenv("RA_API_KEY") or "dev-ra-key-cambia-esto").strip()
     VAPID_PUBLIC_KEY = (os.getenv("VAPID_PUBLIC_KEY") or "").strip()
     VAPID_PRIVATE_KEY = (os.getenv("VAPID_PRIVATE_KEY") or "").strip()
     VAPID_CLAIMS_SUBJECT = (os.getenv("VAPID_CLAIMS_SUBJECT") or "mailto:admin@coyolabs.local").strip()
+
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = ENV not in {"development", "dev", "local", "test", "testing"}
 
     _INSECURE_DEFAULTS = {
         "SECRET_KEY": "dev-secret",

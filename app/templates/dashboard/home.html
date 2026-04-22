@@ -735,6 +735,19 @@
 <script>
 const initialOpsSnapshot = {{ ops_snapshot | tojson }};
 
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value ?? "";
+  return div.innerHTML;
+}
+
+function safeInternalLink(value, fallback = "#") {
+  const raw = String(value || "");
+  if (!raw.startsWith("/")) return fallback;
+  if (raw.startsWith("//")) return fallback;
+  return raw.replace(/"/g, "%22");
+}
+
 function renderOpsList(containerId, items, renderer) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -809,22 +822,22 @@ function renderOpsSnapshot(snapshot) {
   document.getElementById("opsPrint3DCount").textContent = snapshot.counts.pending_print3d_jobs;
 
   renderOpsList("opsPendingList", snapshot.pending_reservations, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>#${item.id}</strong> · ${item.user}<br><span>${item.room} · ${item.date} ${item.time}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>#${escapeHtml(item.id)}</strong> · ${escapeHtml(item.user)}<br><span>${escapeHtml(item.room)} · ${escapeHtml(item.date)} ${escapeHtml(item.time)}</span></a></div>
   `);
   renderOpsList("opsActiveTicketsList", snapshot.active_material_requests, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>Solicitud #${item.id}</strong> · ${item.user}<br><span>${item.status} · ${item.request_date}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>Solicitud #${escapeHtml(item.id)}</strong> · ${escapeHtml(item.user)}<br><span>${escapeHtml(item.status)} · ${escapeHtml(item.request_date)}</span></a></div>
   `);
   renderOpsList("opsReadyItemsList", snapshot.ready_material_requests, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>Solicitud #${item.ticket_id}</strong> · ${item.material}<br><span>${item.user}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>Solicitud #${escapeHtml(item.ticket_id)}</strong> · ${escapeHtml(item.material)}<br><span>${escapeHtml(item.user)}</span></a></div>
   `);
   renderOpsList("opsDebtsList", snapshot.open_debts_recent, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>Adeudo #${item.id}</strong> · ${item.user}<br><span>${item.material}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>Adeudo #${escapeHtml(item.id)}</strong> · ${escapeHtml(item.user)}<br><span>${escapeHtml(item.material)}</span></a></div>
   `);
   renderOpsList("opsPrint3DList", snapshot.pending_print3d_recent, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>3D #${item.id}</strong> · ${item.title}<br><span>${item.status}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>3D #${escapeHtml(item.id)}</strong> · ${escapeHtml(item.title)}<br><span>${escapeHtml(item.status)}</span></a></div>
   `);
   renderOpsList("opsActivityList", snapshot.recent_activity, (item) => `
-    <div class="ops-item"><a href="${item.link}"><strong>${item.title}</strong><br><span>${item.message}</span></a></div>
+    <div class="ops-item"><a href="${safeInternalLink(item.link)}"><strong>${escapeHtml(item.title)}</strong><br><span>${escapeHtml(item.message)}</span></a></div>
   `);
 }
 

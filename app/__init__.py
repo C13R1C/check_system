@@ -36,7 +36,14 @@ _header_notifications_cache_lock = threading.Lock()
 _header_notifications_cache: dict[int, dict] = {}
 _CSP_DIRECTIVES = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+    "script-src": [
+        "'self'",
+        "'unsafe-inline'",
+        "https://cdnjs.cloudflare.com",
+        "https://cdn.jsdelivr.net",
+        "https://unpkg.com",
+        "https://static.cloudflareinsights.com",
+    ],
     "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],

@@ -366,7 +366,7 @@
           {% set is_admin_nav = current_user.is_authenticated and is_admin_role(current_user.role) %}
           {% set is_staff_only_nav = current_user.is_authenticated and (current_user.role or '')|upper == 'STAFF' %}
           {% set current_role = (current_user.role or '')|upper %}
-          {% set can_view_inventory_nav = current_role in ['TEACHER', 'STAFF', 'ADMIN', 'SUPERADMIN'] %}
+          {% set can_view_inventory_nav = current_role in ['STUDENT', 'TEACHER', 'STAFF', 'ADMIN', 'SUPERADMIN'] %}
           {% set can_view_reports_nav = current_role in ['STAFF', 'ADMIN', 'SUPERADMIN'] %}
           {% set can_view_users_nav = current_role in ['ADMIN', 'SUPERADMIN'] %}
           {% if is_admin_nav %}
@@ -666,7 +666,8 @@
       const pushEnableButtons = Array.from(document.querySelectorAll("[data-push-enable-btn]"));
       const markAllBtn = document.getElementById("notifMarkAllBtn");
       const clearReadBtn = document.getElementById("notifClearReadBtn");
-      const csrfToken = "{{ csrf_token }}";
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
+
       if (!badge || !panelList || !center || !logoToggle || !notificationContainer || !markAllBtn || !clearReadBtn) return;
 
       const state = { items: [], unreadCount: 0 };

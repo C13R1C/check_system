@@ -1,5 +1,6 @@
 from functools import wraps
 from collections import defaultdict, deque
+from hmac import compare_digest
 from threading import Lock
 from time import time
 
@@ -38,7 +39,11 @@ def _rate_limit_exceeded() -> bool:
 def api_key_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if not current_user.is_authenticated:
+        expected_api_key = (current_app.config.get("RA_API_KEY") or "").strip()
+        sent_api_key = (request.headers.get("X-API-Key") or "").strip()
+        has_valid_api_key = bool(expected_api_key) and compare_digest(sent_api_key, expected_api_key)
+
+        if not current_user.is_authenticated and not has_valid_api_key:
             return jsonify({"error": "Unauthorized"}), 401
 
         if _rate_limit_exceeded():

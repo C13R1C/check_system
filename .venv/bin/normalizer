@@ -1,4 +1,4 @@
-#!/home/utpn/apps/coyolabs/.venv/bin/python3
+#!/home/utpn/coyolabs/coyolabs_system/.venv/bin/python
 import sys
 from charset_normalizer.cli import cli_detect
 if __name__ == '__main__':
