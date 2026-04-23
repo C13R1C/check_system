@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import logging
 
@@ -14,7 +16,21 @@ logger = logging.getLogger(__name__)
 
 def get_vapid_public_key() -> str | None:
     value = (current_app.config.get("VAPID_PUBLIC_KEY") or "").strip()
-    return value or None
+    if not value:
+        return None
+
+    padding = "=" * ((4 - (len(value) % 4)) % 4)
+    candidate = (value + padding).replace("-", "+").replace("_", "/")
+    try:
+        raw = base64.b64decode(candidate, validate=True)
+    except (ValueError, binascii.Error):
+        return None
+
+    # Uncompressed P-256 public key: 65 bytes, first byte must be 0x04.
+    if len(raw) != 65 or raw[0] != 0x04:
+        return None
+
+    return value
 
 
 def _can_send_push() -> bool:

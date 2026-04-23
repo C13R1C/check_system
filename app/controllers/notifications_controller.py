@@ -228,7 +228,7 @@ def clear_read():
 def push_public_key():
     key = get_vapid_public_key()
     if not key:
-        return jsonify({"ok": False, "error": "Push no configurado."}), 404
+        return jsonify({"ok": False, "error": "Push no configurado correctamente."}), 503
     return jsonify({"ok": True, "public_key": key})
 
 
