@@ -4,6 +4,7 @@ import base64
 import binascii
 import json
 import logging
+from urllib.parse import urlparse
 
 from flask import current_app
 
@@ -50,6 +51,17 @@ def _push_payload(notification: Notification) -> dict:
     }
 
 
+def _build_vapid_claims(endpoint: str) -> dict | None:
+    parsed = urlparse((endpoint or "").strip())
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    aud = f"{parsed.scheme}://{parsed.netloc}"
+    return {
+        "sub": (current_app.config.get("VAPID_CLAIMS_SUBJECT") or "").strip(),
+        "aud": aud,
+    }
+
+
 def dispatch_push_for_notification(notification: Notification) -> int:
     """
     Send web push to all active subscriptions for target user.
@@ -74,11 +86,29 @@ def dispatch_push_for_notification(notification: Notification) -> int:
 
     payload = json.dumps(_push_payload(notification), ensure_ascii=False)
     vapid_private_key = (current_app.config.get("VAPID_PRIVATE_KEY") or "").strip()
-    vapid_claims = {"sub": (current_app.config.get("VAPID_CLAIMS_SUBJECT") or "").strip()}
+    try:
+        push_timeout = int(current_app.config.get("WEBPUSH_TIMEOUT_SECONDS", 5) or 5)
+    except (TypeError, ValueError):
+        push_timeout = 5
 
     sent = 0
     has_deactivations = False
     for sub in subscriptions:
+        if not sub.endpoint or not sub.p256dh or not sub.auth:
+            logger.warning(
+                "Suscripción push inválida/incompleta ignorada",
+                extra={"subscription_id": sub.id, "user_id": sub.user_id},
+            )
+            continue
+
+        vapid_claims = _build_vapid_claims(sub.endpoint)
+        if not vapid_claims:
+            logger.warning(
+                "No se pudo calcular VAPID audience para endpoint; suscripción ignorada",
+                extra={"subscription_id": sub.id, "user_id": sub.user_id},
+            )
+            continue
+
         subscription_info = {
             "endpoint": sub.endpoint,
             "keys": {
@@ -92,6 +122,7 @@ def dispatch_push_for_notification(notification: Notification) -> int:
                 data=payload,
                 vapid_private_key=vapid_private_key,
                 vapid_claims=vapid_claims,
+                timeout=push_timeout,
             )
             sent += 1
         except WebPushException as exc:
