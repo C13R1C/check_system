@@ -233,7 +233,7 @@
         <select name="room" required>
           <option value="">-- Selecciona --</option>
           {% for r in rooms %}
-          <option value="{{ r }}">{{ r }}</option>
+          <option value="{{ r }}" {% if prefilled_room == r %}selected{% endif %}>{{ r }}</option>
           {% endfor %}
         </select>
         <i class="ph ph-caret-down select-arrow"></i>

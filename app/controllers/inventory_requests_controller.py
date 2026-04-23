@@ -399,12 +399,17 @@ def my_ticket_detail(ticket_id: int):
         .order_by(Debt.created_at.desc())
         .all()
     )
+    material_image_map = {
+        item.id: _material_image_src(item.material)
+        for item in (ticket.items or [])
+    }
 
     return render_template(
         "inventory_requests/my_request_detail.html",
         ticket=ticket,
         ticket_meta=_build_user_ticket_meta(ticket),
         related_debts=related_debts,
+        material_image_map=material_image_map,
         active_page="inventory_requests",
     )
 

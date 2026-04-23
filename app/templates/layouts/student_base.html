@@ -451,7 +451,7 @@
             {% if current_user.is_authenticated and current_user.role in ["STUDENT", "TEACHER", "ADMIN", "SUPERADMIN"] %}
             <a href="{{ url_for('ra_client.ra_client_home') }}" class="nav-subitem {% if active_page == 'ra_client' %}active{% endif %}">
               <i class="ph ph-qr-code nav-subicon"></i>
-              <span>RA Cliente</span>
+              <span>Consulta de materiales</span>
             </a>
             {% endif %}
           </div>

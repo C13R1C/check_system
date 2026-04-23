@@ -1,7 +1,7 @@
 {% extends "layouts/student_base.html" %}
-{% set crumbs = [("Inicio", url_for('root_home')), ("RA Cliente", url_for('ra_client.ra_client_home'))] %}
+{% set crumbs = [("Inicio", url_for('root_home')), ("Consulta de materiales", url_for('ra_client.ra_client_home'))] %}
 
-{% block title %}Escaneo RA{% endblock %}
+{% block title %}Consulta de materiales{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -786,7 +786,7 @@ html { font-size: 15px; }
   <div class="hero-brand">
     <div class="hero-logo">CL</div>
     <div>
-      <div class="hero-title">Escaneo RA</div>
+      <div class="hero-title">Consulta de materiales</div>
     </div>
   </div>
   <div class="status-chip" id="statusChip" data-state="ready">
@@ -1407,7 +1407,7 @@ document.addEventListener('keydown', (e) => {
 /* ============================================================
    INIT
    ============================================================ */
-logConsole('INFO', 'Escaneo RA — CoyoLabs v1.0');
+logConsole('INFO', 'Consulta de materiales — CoyoLabs v1.0');
 logConsole('INFO', 'Formatos QR soportados: numero, MAT:N, /inventory/materials/N');
 </script>
 {% endblock %}

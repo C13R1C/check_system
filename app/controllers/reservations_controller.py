@@ -441,6 +441,7 @@ def request_reservation():
         return redirect(url_for("reservations.admin_queue"))
 
     selected_date_s = (request.args.get("date") or request.args.get("week_start") or "").strip()
+    requested_room = normalize_upper(request.args.get("room")) or ""
     calendar_room = (request.args.get("calendar_room") or "").strip()
     calendar_building = (request.args.get("calendar_building") or "").strip().upper()
     base_date = _coerce_base_date(selected_date_s)
@@ -688,6 +689,7 @@ def request_reservation():
         is_professor=is_professor,
         professor_subjects=professor_subjects,
         professor_groups_by_subject=professor_groups_by_subject,
+        prefilled_room=requested_room if requested_room in ROOMS else "",
         active_page="reservations",
         **base_context,
     )

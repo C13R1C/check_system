@@ -315,6 +315,9 @@ def inventory_list():
     page = request.args.get("page", type=int) or 1
 
     include_inactive = bool(request.args.get("include_inactive")) and is_admin_role(current_user.role)
+    show_career_filter = is_admin_role(current_user.role)
+    if not show_career_filter:
+        career_id = None
 
     PER_PAGE = 50
     if page < 1:
@@ -369,6 +372,7 @@ def inventory_list():
         total_pages=total_pages,
         per_page=PER_PAGE,
         material_image_map=material_image_map,
+        show_career_filter=show_career_filter,
         active_page="inventory",
     )
 
