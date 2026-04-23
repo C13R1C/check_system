@@ -21,9 +21,20 @@
 {% if items|length == 0 %}
   <section class="empty-state"><i class="ph ph-app-window empty-icon"></i><h3>Sin registros</h3><p>No hay software registrado.</p></section>
 {% else %}
-<section class="table-card"><div class="table-wrap"><table class="inventory-table" style="min-width: 900px;"><thead><tr><th>Salón/Laboratorio</th><th>Nombre</th><th>Versión</th><th>Licencia</th></tr></thead><tbody>
+<section class="table-card"><div class="table-wrap"><table class="inventory-table" style="min-width: 980px;"><thead><tr><th>Salón/Laboratorio</th><th>Nombre</th><th>Versión</th><th>Licencia</th><th>Acciones</th></tr></thead><tbody>
 {% for s in items %}
-<tr class="software-row"><td>{{ lab_room_codes.get(s.lab_id, '—') }}</td><td>{{ s.name }}</td><td>{{ s.version or '-' }}</td><td>{{ s.license_type or '-' }}</td></tr>
+{% set target_room = lab_room_codes.get(s.lab_id) %}
+<tr class="software-row">
+  <td>{{ target_room or '—' }}</td>
+  <td>{{ s.name }}</td>
+  <td>{{ s.version or '-' }}</td>
+  <td>{{ s.license_type or '-' }}</td>
+  <td>
+    <a class="btn btn-ghost" href="{{ url_for('reservations.request_reservation', room=target_room) if target_room else url_for('reservations.request_reservation') }}">
+      Reservar salón
+    </a>
+  </td>
+</tr>
 {% endfor %}
 </tbody></table></div></section>
 {% endif %}
